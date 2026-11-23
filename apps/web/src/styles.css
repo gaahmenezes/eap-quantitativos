@@ -1,0 +1,54 @@
+@import 'tailwindcss';
+
+/*
+ * Tokens visuais — linguagem de prancha técnica.
+ * grafite (cromo), papel (área de trabalho), cianotipia (ação primária),
+ * sinalização (foco/estado ativo — usar com parcimônia).
+ */
+@theme {
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Barlow Semi Condensed', 'Barlow', ui-sans-serif, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --color-graphite-950: #141c22;
+  --color-graphite-900: #1f2a33;
+  --color-graphite-800: #2b3843;
+  --color-graphite-600: #4f5f6c;
+  --color-graphite-400: #8796a2;
+  --color-paper: #fafbfc;
+  --color-sheet: #ffffff;
+  --color-line: #d5dbe1;
+  --color-line-strong: #aab5bf;
+  --color-ink: #1b252d;
+  --color-muted: #5b6873;
+  --color-cyan-ink: #1e5a8a;
+  --color-cyan-ink-dark: #164466;
+  --color-cyan-wash: #e8f0f7;
+  --color-signal: #e0a526;
+  --color-ok: #2f7d4f;
+  --color-ok-wash: #e6f2ea;
+  --color-danger: #b3261e;
+  --color-danger-wash: #fbeceb;
+  --color-warn-wash: #fdf4e0;
+}
+
+html {
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+}
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

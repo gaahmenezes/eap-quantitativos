@@ -27,11 +27,11 @@ Camadas da API: controller (HTTP fino) → service (caso de uso: autorização, 
 ## Comandos
 ```
 pnpm install
-pnpm db:start            # inicia Postgres local (container de dev) — ver README
+pnpm db:up               # Postgres via docker compose (ou Postgres local) — ver README
 pnpm --filter @eapq/api prisma:migrate   # aplica migrações
 pnpm dev                 # api :3000 + web :5173
 pnpm typecheck && pnpm lint && pnpm test
-pnpm --filter @eapq/web e2e -- --trace off
+pnpm e2e                  # Playwright (PW_CHROMIUM_PATH se necessário)
 ```
 
 ## Convenções
