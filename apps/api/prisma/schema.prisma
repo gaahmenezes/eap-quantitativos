@@ -1,0 +1,191 @@
+// Schema F1 — Fundação. Ver docs/database/README.md e ADR-007 (isolamento por organização).
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum ProjectRole {
+  COORDINATOR
+  EDITOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ProjectClassification {
+  VERTICAL
+  HORIZONTAL
+  LOTEAMENTO
+  MISTO
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model Organization {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String   @db.VarChar(120)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  memberships Membership[]
+  invitations Invitation[]
+  projects    Project[]
+  auditLogs   AuditLog[]
+
+  @@map("organization")
+}
+
+model User {
+  id               String     @id @default(uuid(7)) @db.Uuid
+  email            String     @unique @db.VarChar(254)
+  name             String     @db.VarChar(120)
+  passwordHash     String     @db.VarChar(255)
+  status           UserStatus @default(ACTIVE)
+  failedLoginCount Int        @default(0)
+  lockedUntil      DateTime?  @db.Timestamptz(3)
+  createdAt        DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime   @updatedAt @db.Timestamptz(3)
+
+  memberships     Membership[]
+  sessions        Session[]
+  auditLogs       AuditLog[]
+  invitationsSent Invitation[] @relation("InvitedBy")
+
+  @@map("app_user")
+}
+
+model Membership {
+  organizationId String   @db.Uuid
+  userId         String   @db.Uuid
+  role           OrgRole
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  projectMembers ProjectMember[]
+
+  @@id([organizationId, userId])
+  @@index([userId])
+  @@map("membership")
+}
+
+model Invitation {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  email          String    @db.VarChar(254)
+  role           OrgRole
+  tokenHash      String    @unique @db.VarChar(64)
+  invitedById    String    @db.Uuid
+  expiresAt      DateTime  @db.Timestamptz(3)
+  acceptedAt     DateTime? @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invitedBy    User         @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@map("invitation")
+}
+
+model Session {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  tokenHash      String    @unique @db.VarChar(64)
+  csrfToken      String    @db.VarChar(64)
+  userId         String    @db.Uuid
+  organizationId String    @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  lastSeenAt     DateTime  @default(now()) @db.Timestamptz(3)
+  expiresAt      DateTime  @db.Timestamptz(3)
+  revokedAt      DateTime? @db.Timestamptz(3)
+  ip             String?   @db.VarChar(64)
+  userAgent      String?   @db.VarChar(400)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Project {
+  id             String                @id @default(uuid(7)) @db.Uuid
+  organizationId String                @db.Uuid
+  code           String                @db.VarChar(30)
+  name           String                @db.VarChar(200)
+  description    String?               @db.VarChar(4000)
+  classification ProjectClassification
+  location       String?               @db.VarChar(300)
+  status         ProjectStatus         @default(ACTIVE)
+  archivedAt     DateTime?             @db.Timestamptz(3)
+  version        Int                   @default(1)
+  createdById    String                @db.Uuid
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime              @updatedAt @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  members      ProjectMember[]
+  auditLogs    AuditLog[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+  @@map("project")
+}
+
+/// Membro de empreendimento: FK composta garante que o usuário é membro da MESMA organização do projeto.
+model ProjectMember {
+  organizationId String      @db.Uuid
+  projectId      String      @db.Uuid
+  userId         String      @db.Uuid
+  role           ProjectRole
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+
+  project    Project    @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  membership Membership @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Restrict)
+
+  @@id([projectId, userId])
+  @@index([organizationId, userId])
+  @@map("project_member")
+}
+
+/// Auditoria append-only (trigger impede UPDATE/DELETE — ver migração).
+model AuditLog {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  projectId      String?  @db.Uuid
+  actorId        String?  @db.Uuid
+  entityType     String   @db.VarChar(60)
+  entityId       String   @db.VarChar(64)
+  action         String   @db.VarChar(40)
+  before         Json?
+  after          Json?
+  reason         String?  @db.VarChar(500)
+  requestId      String?  @db.VarChar(64)
+  at             DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  project      Project?     @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  actor        User?        @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, projectId, at])
+  @@map("audit_log")
+}
