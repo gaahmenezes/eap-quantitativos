@@ -54,6 +54,7 @@ model Organization {
   unitOfMeasures    UnitOfMeasure[]
   serviceCategories ServiceCategory[]
   services          Service[]
+  wbsTemplates      WbsTemplate[]
 
   @@map("organization")
 }
@@ -153,6 +154,8 @@ model Project {
   typologies   DwellingTypology[]
   systems      InfrastructureSystem[]
   services     Service[]
+  wbsNodes     WbsNode[]
+  wbsRuns      WbsGenerationRun[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, code])
@@ -733,14 +736,198 @@ model Service {
   createdAt             DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime      @updatedAt @db.Timestamptz(3)
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  project      Project?        @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  category     ServiceCategory @relation(fields: [categoryId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  unit         UnitOfMeasure   @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  derivedFrom  Service?        @relation("ServiceDerivation", fields: [derivedFromId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  derivatives  Service[]       @relation("ServiceDerivation")
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  project      Project?         @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  category     ServiceCategory  @relation(fields: [categoryId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  unit         UnitOfMeasure    @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  derivedFrom  Service?         @relation("ServiceDerivation", fields: [derivedFromId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  derivatives  Service[]        @relation("ServiceDerivation")
+  wbsLinks     WbsNodeService[]
 
   @@unique([id, organizationId])
   @@index([organizationId, projectId, categoryId])
   @@map("service")
+}
+
+// ===================== F5 — Templates e EAP =====================
+
+enum WbsNodeType {
+  GROUP
+  ITEM
+}
+
+enum WbsNodeOrigin {
+  GENERATED
+  MANUAL
+}
+
+enum WbsNodeStatus {
+  ACTIVE
+  OBSOLETE
+}
+
+enum WbsRepeatScope {
+  TOWER
+  BUILDING_BLOCK
+  FLOOR
+  DWELLING_UNIT
+  DWELLING_TYPOLOGY
+  COMMON_AREA
+  SPECIAL_AREA
+  PHASE
+  STAGE
+  SECTOR
+  BLOCK_QUADRA
+  LOT
+  STREET
+  STREET_SECTION
+  INFRA_SYSTEM
+  NETWORK
+}
+
+enum WbsBindingKind {
+  MODULE
+  STRUCTURE
+  TYPOLOGY
+  SYSTEM
+  NETWORK
+}
+
+/// Template de EAP da organização.
+model WbsTemplate {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @db.Uuid
+  code           String       @db.VarChar(30)
+  name           String       @db.VarChar(120)
+  description    String?      @db.VarChar(1000)
+  moduleKinds    ModuleKind[]
+  archivedAt     DateTime?    @db.Timestamptz(3)
+  version        Int          @default(1)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  versions     WbsTemplateVersion[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@map("wbs_template")
+}
+
+/// Versão do template. PUBLISHED é imutável (trigger); um único DRAFT por template.
+model WbsTemplateVersion {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  templateId     String         @db.Uuid
+  number         Int
+  status         RevisionStatus @default(DRAFT)
+  notes          String?        @db.VarChar(1000)
+  publishedAt    DateTime?      @db.Timestamptz(3)
+  publishedById  String?        @db.Uuid
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+
+  template WbsTemplate       @relation(fields: [templateId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  nodes    WbsTemplateNode[]
+  wbsNodes WbsNode[]
+
+  @@unique([id, organizationId])
+  @@unique([templateId, number])
+  @@map("wbs_template_version")
+}
+
+/// Nó do template: título com variáveis, tipo, condição, repetição e serviços sugeridos.
+/// `stableKey` é preservado entre versões e compõe a generationKey dos nós gerados.
+model WbsTemplateNode {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  versionId  String          @db.Uuid
+  parentId   String?         @db.Uuid
+  stableKey  String          @db.VarChar(60)
+  title      String          @db.VarChar(200)
+  nodeType   WbsNodeType
+  condition  String?         @db.VarChar(500)
+  repeat     WbsRepeatScope?
+  position   Int
+  serviceIds String[]        @db.Uuid
+
+  version  WbsTemplateVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  parent   WbsTemplateNode?   @relation("TemplateNodeTree", fields: [parentId, versionId], references: [id, versionId], onDelete: Cascade)
+  children WbsTemplateNode[]  @relation("TemplateNodeTree")
+
+  @@unique([id, versionId])
+  @@unique([versionId, stableKey])
+  @@map("wbs_template_node")
+}
+
+/// Nó da EAP do empreendimento — independente do cadastro físico (vínculos opcionais por ID).
+model WbsNode {
+  id                  String          @id @default(uuid(7)) @db.Uuid
+  organizationId      String          @db.Uuid
+  projectId           String          @db.Uuid
+  parentId            String?         @db.Uuid
+  title               String          @db.VarChar(200)
+  code                String          @db.VarChar(80)
+  depth               Int
+  position            Int
+  path                String          @db.Text
+  nodeType            WbsNodeType
+  origin              WbsNodeOrigin
+  status              WbsNodeStatus   @default(ACTIVE)
+  generationKey       String?         @db.VarChar(600)
+  moduleId            String?         @db.Uuid
+  templateVersionId   String?         @db.Uuid
+  templateNodeKey     String?         @db.VarChar(60)
+  bindingKind         WbsBindingKind?
+  bindingId           String?         @db.Uuid
+  titleOverridden     Boolean         @default(false)
+  placementOverridden Boolean         @default(false)
+  archivedAt          DateTime?       @db.Timestamptz(3)
+  version             Int             @default(1)
+  createdAt           DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime        @updatedAt @db.Timestamptz(3)
+
+  project         Project             @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  parent          WbsNode?            @relation("WbsTree", fields: [parentId, projectId], references: [id, projectId], onDelete: Restrict)
+  children        WbsNode[]           @relation("WbsTree")
+  templateVersion WbsTemplateVersion? @relation(fields: [templateVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  services        WbsNodeService[]
+
+  @@unique([id, projectId])
+  @@index([projectId, parentId, position])
+  @@index([projectId, path])
+  @@map("wbs_node")
+}
+
+/// Serviços associados a um item quantificável da EAP.
+model WbsNodeService {
+  wbsNodeId      String   @db.Uuid
+  projectId      String   @db.Uuid
+  organizationId String   @db.Uuid
+  serviceId      String   @db.Uuid
+  fromTemplate   Boolean  @default(false)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  node    WbsNode @relation(fields: [wbsNodeId, projectId], references: [id, projectId], onDelete: Cascade)
+  service Service @relation(fields: [serviceId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@id([wbsNodeId, serviceId])
+  @@index([projectId, serviceId])
+  @@map("wbs_node_service")
+}
+
+/// Registro de cada geração/regeneração aplicada (reprodutibilidade e auditoria).
+model WbsGenerationRun {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  projectId      String   @db.Uuid
+  selections     Json
+  factsHash      String   @db.VarChar(16)
+  resultHash     String   @db.VarChar(16)
+  summary        Json
+  createdById    String   @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  project Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([projectId, createdAt])
+  @@map("wbs_generation_run")
 }

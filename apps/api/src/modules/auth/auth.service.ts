@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CatalogService } from '../catalog/catalog.service.js';
 import { LibraryService } from '../library/library.service.js';
+import { WbsTemplatesService } from '../wbs-templates/wbs-templates.service.js';
 import { burnVerify, hashPassword, verifyPassword } from './password.js';
 
 const MAX_FAILED = 10;
@@ -32,6 +33,7 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly catalog: CatalogService,
     private readonly library: LibraryService,
+    private readonly wbsTemplates: WbsTemplatesService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -49,6 +51,7 @@ export class AuthService {
       await tx.membership.create({ data: { organizationId: org.id, userId: user.id, role: 'OWNER' } });
       await this.catalog.ensureDefaults(tx, org.id);
       await this.library.ensureLibrary(tx, org.id);
+      await this.wbsTemplates.ensureDefaults(tx, org.id);
       const actor = { userId: user.id, organizationId: org.id, requestId: meta.requestId };
       await this.audit.record(tx, actor, {
         entityType: 'Organization',
