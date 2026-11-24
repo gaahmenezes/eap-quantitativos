@@ -50,7 +50,7 @@ export function toRevisionElements(rows: TypologyElement[]): RevisionElement[] {
   return out;
 }
 
-const toOverrideInput = (o: UnitOverride): UnitOverrideInput =>
+export const toOverrideInput = (o: UnitOverride): UnitOverrideInput =>
   o.op === 'EXCLUDE_ELEMENT'
     ? { id: o.id, op: 'EXCLUDE_ELEMENT', targetStableKey: o.targetStableKey! }
     : { id: o.id, op: 'ADD_ELEMENT', parentStableKey: o.parentStableKey, name: o.name!, elementTypeId: o.elementTypeId!, attributes: attrs(o.attributes) };

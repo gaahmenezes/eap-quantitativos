@@ -55,6 +55,7 @@ model Organization {
   serviceCategories ServiceCategory[]
   services          Service[]
   wbsTemplates      WbsTemplate[]
+  formulas          Formula[]
 
   @@map("organization")
 }
@@ -156,6 +157,7 @@ model Project {
   services     Service[]
   wbsNodes     WbsNode[]
   wbsRuns      WbsGenerationRun[]
+  measurements Measurement[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, code])
@@ -296,6 +298,8 @@ model StructureNode {
   segments      NetworkSegment[]
   elements      PhysicalElement[]
 
+  measurements Measurement[]
+
   @@unique([id, projectId])
   @@index([projectId, moduleId, parentId, position])
   @@index([projectId, path])
@@ -314,6 +318,8 @@ model DwellingUnit {
   typology       DwellingTypology? @relation(fields: [typologyId, projectId], references: [id, projectId], onDelete: Restrict)
   pinnedRevision TypologyRevision? @relation(fields: [pinnedRevisionId, projectId], references: [id, projectId], onDelete: Restrict)
   overrides      UnitOverride[]
+
+  measurements Measurement[]
 
   @@unique([structureNodeId, projectId])
   @@index([projectId, typologyId])
@@ -351,6 +357,8 @@ model DwellingTypology {
   project   Project            @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
   units     DwellingUnit[]
   revisions TypologyRevision[]
+
+  measurements Measurement[]
 
   @@unique([id, projectId])
   @@unique([projectId, code])
@@ -524,6 +532,9 @@ model NetworkNode {
   outgoing    NetworkSegment[]      @relation("SegmentFrom")
   incoming    NetworkSegment[]      @relation("SegmentTo")
 
+  measurements Measurement[]
+
+  @@unique([id, projectId])
   @@unique([id, networkId])
   @@unique([networkId, code])
   @@map("network_node")
@@ -560,6 +571,9 @@ model NetworkSegment {
   toNode        NetworkNode           @relation("SegmentTo", fields: [toNodeId, networkId], references: [id, networkId], onDelete: Restrict)
   streetSection StructureNode?        @relation(fields: [streetSectionId, projectId], references: [id, projectId], onDelete: Restrict)
 
+  measurements Measurement[]
+
+  @@unique([id, projectId])
   @@unique([networkId, code])
   @@index([networkId, fromNodeId])
   @@map("network_segment")
@@ -585,6 +599,9 @@ model PhysicalElement {
   system        InfrastructureSystem? @relation(fields: [systemId, projectId], references: [id, projectId], onDelete: Restrict)
   structureNode StructureNode?        @relation(fields: [structureNodeId, projectId], references: [id, projectId], onDelete: Restrict)
 
+  measurements Measurement[]
+
+  @@unique([id, projectId])
   @@index([projectId, systemId])
   @@index([projectId, structureNodeId])
   @@map("physical_element")
@@ -689,6 +706,8 @@ model UnitOfMeasure {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   services     Service[]
 
+  measurementRevisions MeasurementRevision[]
+
   @@unique([id, organizationId])
   @@unique([organizationId, symbol])
   @@map("unit_of_measure")
@@ -743,6 +762,8 @@ model Service {
   derivedFrom  Service?         @relation("ServiceDerivation", fields: [derivedFromId, organizationId], references: [id, organizationId], onDelete: Restrict)
   derivatives  Service[]        @relation("ServiceDerivation")
   wbsLinks     WbsNodeService[]
+
+  measurements Measurement[]
 
   @@unique([id, organizationId])
   @@index([organizationId, projectId, categoryId])
@@ -891,6 +912,8 @@ model WbsNode {
   templateVersion WbsTemplateVersion? @relation(fields: [templateVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
   services        WbsNodeService[]
 
+  measurements Measurement[]
+
   @@unique([id, projectId])
   @@index([projectId, parentId, position])
   @@index([projectId, path])
@@ -930,4 +953,136 @@ model WbsGenerationRun {
 
   @@index([projectId, createdAt])
   @@map("wbs_generation_run")
+}
+
+// ===================== F6 — Fórmulas, medições e memórias de cálculo =====================
+
+enum MeasurementMethod {
+  MANUAL
+  FORMULA
+}
+
+enum MeasurementAnchorKind {
+  STRUCTURE_NODE
+  TYPOLOGY_ELEMENT
+  NETWORK_SEGMENT
+  NETWORK_NODE
+  PHYSICAL_ELEMENT
+}
+
+/// Fórmula reutilizável da organização (ADR-004/016).
+model Formula {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  code           String    @db.VarChar(30)
+  name           String    @db.VarChar(120)
+  description    String?   @db.VarChar(1000)
+  archivedAt     DateTime? @db.Timestamptz(3)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  versions     FormulaVersion[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@map("formula")
+}
+
+/// Versão da fórmula. PUBLISHED é imutável (trigger); um único DRAFT por fórmula.
+/// `variables`: [{ symbol, label, unit, constraint }] validado pelo domínio.
+model FormulaVersion {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  formulaId      String         @db.Uuid
+  number         Int
+  status         RevisionStatus @default(DRAFT)
+  expression     String         @db.VarChar(500)
+  variables      Json
+  /// Grandeza do resultado (calculada na publicação).
+  dimL           Int?
+  dimM           Int?
+  dimT           Int?
+  notes          String?        @db.VarChar(1000)
+  publishedAt    DateTime?      @db.Timestamptz(3)
+  publishedById  String?        @db.Uuid
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+
+  formula   Formula               @relation(fields: [formulaId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  revisions MeasurementRevision[]
+
+  @@unique([id, organizationId])
+  @@unique([formulaId, number])
+  @@map("formula_version")
+}
+
+/// Medição: nó da EAP (item) × serviço × uma âncora física. A quantidade vigente é a da revisão atual.
+model Measurement {
+  id                String                @id @default(uuid(7)) @db.Uuid
+  organizationId    String                @db.Uuid
+  projectId         String                @db.Uuid
+  wbsNodeId         String                @db.Uuid
+  serviceId         String                @db.Uuid
+  anchorKind        MeasurementAnchorKind
+  structureNodeId   String?               @db.Uuid
+  networkSegmentId  String?               @db.Uuid
+  networkNodeId     String?               @db.Uuid
+  physicalElementId String?               @db.Uuid
+  typologyId        String?               @db.Uuid
+  /// stableKey do elemento da tipologia ou "unit:<particularidade>" para elemento incluído na unidade.
+  elementKey        String?               @db.VarChar(80)
+  /// Medição própria de uma unidade (substitui a da tipologia para aquela unidade).
+  dwellingUnitId    String?               @db.Uuid
+  currentNumber     Int                   @default(1)
+  quantity          Decimal               @db.Decimal(28, 10)
+  archivedAt        DateTime?             @db.Timestamptz(3)
+  archiveReason     String?               @db.VarChar(500)
+  version           Int                   @default(1)
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime              @updatedAt @db.Timestamptz(3)
+
+  project         Project               @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  wbsNode         WbsNode               @relation(fields: [wbsNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  service         Service               @relation(fields: [serviceId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  structureNode   StructureNode?        @relation(fields: [structureNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  networkSegment  NetworkSegment?       @relation(fields: [networkSegmentId, projectId], references: [id, projectId], onDelete: Restrict)
+  networkNode     NetworkNode?          @relation(fields: [networkNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  physicalElement PhysicalElement?      @relation(fields: [physicalElementId, projectId], references: [id, projectId], onDelete: Restrict)
+  typology        DwellingTypology?     @relation(fields: [typologyId, projectId], references: [id, projectId], onDelete: Restrict)
+  dwellingUnit    DwellingUnit?         @relation(fields: [dwellingUnitId, projectId], references: [structureNodeId, projectId], onDelete: Restrict)
+  revisions       MeasurementRevision[]
+
+  @@unique([id, projectId])
+  @@index([projectId, wbsNodeId, serviceId])
+  @@map("measurement")
+}
+
+/// Revisão de medição = memória de cálculo. Somente inclusão (trigger bloqueia UPDATE/DELETE).
+model MeasurementRevision {
+  id               String            @id @default(uuid(7)) @db.Uuid
+  organizationId   String            @db.Uuid
+  projectId        String            @db.Uuid
+  measurementId    String            @db.Uuid
+  number           Int
+  method           MeasurementMethod
+  formulaVersionId String?           @db.Uuid
+  inputs           Json
+  memory           Json
+  quantity         Decimal           @db.Decimal(28, 10)
+  unitId           String            @db.Uuid
+  /// Documento de origem (prancha, memorial, levantamento de campo…).
+  sourceReference  String?           @db.VarChar(300)
+  notes            String?           @db.VarChar(2000)
+  reason           String?           @db.VarChar(500)
+  createdById      String            @db.Uuid
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
+
+  measurement    Measurement     @relation(fields: [measurementId, projectId], references: [id, projectId], onDelete: Restrict)
+  formulaVersion FormulaVersion? @relation(fields: [formulaVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  unit           UnitOfMeasure   @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([measurementId, number])
+  @@index([projectId, createdAt])
+  @@map("measurement_revision")
 }

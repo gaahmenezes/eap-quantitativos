@@ -10,10 +10,11 @@
  *   not     := ('não' | 'nao' | '!') not | cmp
  *   cmp     := add ( ('=='|'!='|'<'|'<='|'>'|'>=') add )?
  *   add     := mul ( ('+'|'-') mul )*
- *   mul     := pow ( ('*'|'/') pow )*
- *   pow     := unary ( '^' pow )?
- *   unary   := '-' unary | primary
+ *   mul     := unary ( ('*'|'/') unary )*
+ *   unary   := '-' unary | pow
+ *   pow     := primary ( '^' unary )?
  *   primary := número | 'texto' | verdadeiro | falso | ident(.ident)* | ident '(' args ')' | '(' expr ')'
+ *   args    := expr ( (';' | ',') expr )*      — use ";" quando houver números com vírgula decimal
  */
 export type Ast =
   | { t: 'num'; v: string }
@@ -34,7 +35,7 @@ type Tok = { k: 'num' | 'str' | 'id' | 'op' | 'eof'; v: string; p: number };
 
 const MAX_LENGTH = 500;
 const MAX_DEPTH = 40;
-const OPS = ['<=', '>=', '==', '!=', '&&', '||', '+', '-', '*', '/', '^', '(', ')', ',', '<', '>', '!', '.'];
+const OPS = ['<=', '>=', '==', '!=', '&&', '||', '+', '-', '*', '/', '^', '(', ')', ',', ';', '<', '>', '!', '.'];
 const WORD_OPS = new Map<string, string>([['e', '&&'], ['and', '&&'], ['ou', '||'], ['or', '||'], ['não', '!'], ['nao', '!'], ['not', '!']]);
 /** Nomes que nunca podem ser referenciados (defesa contra acesso a protótipos). */
 const FORBIDDEN = new Set(['__proto__', 'prototype', 'constructor']);
@@ -109,7 +110,8 @@ export function parseExpression(src: string): Ast {
       if (isOp('(')) {
         next();
         const args: Ast[] = [];
-        if (!isOp(')')) { do { args.push(or()); } while (isOp(',') && next()); }
+        // Argumentos separados por ";" (padrão pt-BR, pois a vírgula é decimal) ou ",".
+        if (!isOp(')')) { do { args.push(or()); } while ((isOp(';') || isOp(',')) && next()); }
         expect(')');
         return { t: 'call', name: t.v, args };
       }
@@ -125,18 +127,19 @@ export function parseExpression(src: string): Ast {
     }
     throw new ExpressionError(t.k === 'eof' ? 'Expressão incompleta.' : `Símbolo inesperado: "${t.v}".`, t.p);
   });
-  const unary = (): Ast => (isOp('-') ? (next(), { t: 'un', op: '-', a: guard(unary) }) : primary());
+  // Potência liga mais forte que o menos unário: -x^2 = -(x^2); 2^-1 e 2^3^2 = 2^(3^2) permitidos.
   const pow = (): Ast => {
-    const a = unary();
-    if (isOp('^')) { next(); return { t: 'bin', op: '^', a, b: guard(pow) }; }
+    const a = primary();
+    if (isOp('^')) { next(); return { t: 'bin', op: '^', a, b: guard(unary) }; }
     return a;
   };
+  function unary(): Ast { return isOp('-') ? (next(), { t: 'un', op: '-', a: guard(unary) }) : pow(); }
   const chain = (sub: () => Ast, ops: string[], map: (o: string) => Extract<Ast, { t: 'bin' }>['op'] = (o) => o as never) => (): Ast => {
     let a = sub();
     while (peek().k === 'op' && ops.includes(peek().v)) { const o = next().v; a = { t: 'bin', op: map(o), a, b: sub() }; }
     return a;
   };
-  const mul = chain(pow, ['*', '/']);
+  const mul = chain(unary, ['*', '/']);
   const add = chain(mul, ['+', '-']);
   const cmp = (): Ast => {
     const a = add();

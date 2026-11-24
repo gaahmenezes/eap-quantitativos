@@ -19,6 +19,8 @@ import { ConstructiveModule } from './modules/constructive/constructive.module.j
 import { LibraryModule } from './modules/library/library.module.js';
 import { WbsTemplatesModule } from './modules/wbs-templates/wbs-templates.module.js';
 import { WbsModule } from './modules/wbs/wbs.module.js';
+import { FormulasModule } from './modules/formulas/formulas.module.js';
+import { MeasurementsModule } from './modules/measurements/measurements.module.js';
 import { PrismaService } from './prisma/prisma.service.js';
 
 @Global()
@@ -63,6 +65,8 @@ export class AppModule implements NestModule {
         LibraryModule,
         WbsTemplatesModule,
         WbsModule,
+        FormulasModule,
+        MeasurementsModule,
       ],
       controllers: [HealthController],
       providers: [

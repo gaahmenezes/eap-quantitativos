@@ -16,3 +16,7 @@ export * from './wbs/model.js';
 export * from './wbs/generate.js';
 export * from './wbs/diff.js';
 export * from './wbs/defaults.js';
+export * from './formula/formula.js';
+export * from './measurement/coverage.js';
+export * from './measurement/expand.js';
+export * from './formula/defaults.js';
