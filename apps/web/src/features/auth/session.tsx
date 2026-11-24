@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MeResponse } from '@eapq/contracts';
 import { api, ApiError, setCsrfToken } from '../../lib/api';
@@ -19,7 +19,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryKey: ['me'],
     queryFn: async () => {
       try {
-        return await api<MeResponse>('GET', '/auth/me');
+        const me = await api<MeResponse>('GET', '/auth/me');
+        // antes de qualquer tela usar a sessão: efeitos dos filhos rodam antes dos do provedor
+        setCsrfToken(me.csrfToken);
+        return me;
       } catch (e) {
         if (e instanceof ApiError && e.status === 401) return null;
         throw e;
@@ -29,7 +32,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     retry: false,
   });
   const me = query.data ?? null;
-  useEffect(() => setCsrfToken(me?.csrfToken ?? null), [me?.csrfToken]);
+  // mantém o token em sincronia também quando a sessão é atualizada por setQueryData (login)
+  if (me?.csrfToken) setCsrfToken(me.csrfToken);
 
   const value: SessionValue = {
     me,

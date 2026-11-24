@@ -9,6 +9,7 @@ import { api, errorMessage } from '../../lib/api';
 import { fmtDateTime, fmtQty } from '../../lib/format';
 import { useProject } from '../projects/api';
 import { mKeys } from './api';
+import { ExportButton } from '../../components/export-button';
 import { MemoryView } from './memory-view';
 
 const PAGE = 50;
@@ -30,9 +31,12 @@ export function MemoriesPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: 'Empreendimentos', to: '/empreendimentos' }, { label: p.name, to: `/empreendimentos/${p.id}` }, { label: 'Memórias de cálculo' }]} />
-      <div className="mb-4 border-b border-line pb-4">
-        <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight">Memórias de cálculo</h1>
-        <p className="mt-1 text-[14px] text-muted">Todas as revisões de medição, da mais recente para a mais antiga. Nenhuma é apagada ou alterada.</p>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+        <div>
+          <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight">Memórias de cálculo</h1>
+          <p className="mt-1 text-[14px] text-muted">Todas as revisões de medição, da mais recente para a mais antiga. Nenhuma é apagada ou alterada.</p>
+        </div>
+        <ExportButton path={`/projects/${p.id}/exports`} body={{ report: 'memories' }} />
       </div>
       <input type="search" aria-label="Buscar memórias" placeholder="Serviço, item da EAP ou documento de origem" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} className="mb-3 h-8 w-80 max-w-full rounded-[3px] border border-line-strong bg-sheet px-2 text-[13.5px]" />
       {list.isPending ? <Loading /> : list.isError ? <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} /> : list.data.total === 0 ? (

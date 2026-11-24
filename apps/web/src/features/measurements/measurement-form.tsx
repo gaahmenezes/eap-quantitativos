@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import type { AnchorInput, CalcInput, CalcPreviewDto, FormulaVariableInput, MeasurementDto, ServiceDto, UnitDto } from '@eapq/contracts';
+import type { AnchorInput, CalcInput, CalcPreviewDto, DocumentDto, FormulaVariableInput, MeasurementDto, ServiceDto, UnitDto } from '@eapq/contracts';
 import { compatibleDimensions } from '@eapq/domain';
 import { useAction } from '../../components/ui/actions';
 import { Button } from '../../components/ui/button';
 import { Loading, Notice } from '../../components/ui/feedback';
 import { SelectField, TextArea, TextField } from '../../components/ui/field';
-import { api } from '../../lib/api';
+import { api, uploadFile } from '../../lib/api';
 import { useUnits } from '../library/api';
 import { useFormulas } from './formulas-page';
 import { mKeys, useAnchors } from './api';
@@ -48,6 +48,7 @@ export function MeasurementForm({ projectId, wbsNodeId, service, existing, recal
   const [anchor, setAnchor] = useState<AnchorInput | null>(null);
   const [sourceReference, setSource] = useState(cur?.sourceReference ?? '');
   const [notes, setNotes] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [reason, setReason] = useState(recalcVersionId ? 'Recálculo com a versão mais nova da fórmula' : '');
   const [preview, setPreview] = useState<CalcPreviewDto | null>(null);
   const act = useAction([mKeys.all(projectId), ['formulas']]);
@@ -67,7 +68,10 @@ export function MeasurementForm({ projectId, wbsNodeId, service, existing, recal
   return (
     <form className="flex flex-col gap-4" onSubmit={async (e) => {
       e.preventDefault();
-      const body = { calc: calc(), sourceReference: sourceReference.trim() || null, notes: notes.trim() || null };
+      // o arquivo de origem é enviado antes; a medição só referencia o documento já verificado
+      const doc = file ? await act.run(() => uploadFile<DocumentDto>(`/projects/${projectId}/documents`, file)) : null;
+      if (doc === false) return;
+      const body = { calc: calc(), sourceReference: sourceReference.trim() || null, notes: notes.trim() || null, documentId: doc && doc !== true ? doc.id : null };
       const r = existing
         ? await act.run(() => api('POST', `/projects/${projectId}/measurements/${existing.id}/revisions`, { body: { ...body, reason }, version: existing.version }))
         : await act.run(() => api('POST', `/projects/${projectId}/measurements`, { body: { ...body, wbsNodeId, serviceId: service.id, anchor } }));
@@ -101,6 +105,11 @@ export function MeasurementForm({ projectId, wbsNodeId, service, existing, recal
         </>
       )}
       <TextField label="Documento de origem (opcional)" value={sourceReference} onChange={(e) => setSource(e.target.value)} hint="Prancha, memorial ou levantamento, por exemplo: ARQ-03 rev. B" />
+      <div>
+        <label htmlFor="measurement-file" className="mb-1 block text-[13px] font-medium text-graphite-800">Arquivo de origem (opcional)</label>
+        <input id="measurement-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-[13px]" />
+        <p className="mt-0.5 text-[12px] text-muted">PDF, imagem ou planilha, até 20 MB. Fica anexado a esta revisão da medição.</p>
+      </div>
       <TextArea label="Observações (opcional)" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
       {existing && <TextField label="Motivo da revisão" value={reason} onChange={(e) => setReason(e.target.value)} error={act.fieldErrors.reason} />}
       {act.error && <Notice tone="danger">{act.error}</Notice>}

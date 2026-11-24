@@ -23,6 +23,8 @@ pnpm --filter @eapq/api seed                 # usuário demo@eapq.local (apenas 
 pnpm dev                                     # API em :3000/api, web em :5173
 ```
 
+Arquivos enviados (planilhas de importação e documentos de origem das medições) ficam em `STORAGE_DIR` (padrão `apps/api/storage`, fora da raiz pública e fora do Git). Faça backup dessa pasta junto com o banco. O limite de upload é `UPLOAD_MAX_MB` (padrão 20).
+
 ## Testes
 ```bash
 pnpm lint

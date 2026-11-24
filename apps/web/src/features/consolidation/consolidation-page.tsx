@@ -14,6 +14,7 @@ import { useProject } from '../projects/api';
 import { MeasurementDetail } from '../measurements/quantities-page';
 import { MemoryView } from '../measurements/memory-view';
 import { useRevisions } from '../revisions/api';
+import { ExportButton } from '../../components/export-button';
 import { fmtDateTime } from '../../lib/format';
 
 type Dim = ConsolidationDimensionKey;
@@ -104,7 +105,10 @@ export function ConsolidationPage() {
       {q.isPending ? <Loading /> : q.isError ? <ErrorState message={errorMessage(q.error)} onRetry={() => q.refetch()} /> : q.data.rows.length === 0 ? (
         <EmptyState title="Nada a consolidar">Não há medições vigentes {activeFilters.length ? 'com esses filtros' : 'neste empreendimento'}.</EmptyState>
       ) : (
-        <ResultTable result={q.data} onDrill={setDrill} />
+        <>
+          <div className="mb-2 flex justify-end"><ExportButton path={`/projects/${p.id}/exports`} body={{ report: 'consolidation', groupBy, filters, ...(revisionId && { revisionId }) }} /></div>
+          <ResultTable result={q.data} onDrill={setDrill} />
+        </>
       )}
       <SidePanel open={!!drill} title="Detalhamento" onClose={() => setDrill(null)}>
         {drill && q.data && <Drill projectId={p.id} revisionId={revisionId} row={drill} groupBy={q.data.groupBy} filters={filters} />}

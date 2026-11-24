@@ -88,3 +88,12 @@ Sem tabelas novas. A consolidação é uma consulta (`apps/api/src/modules/conso
 | `revision_measurement` | Medição congelada → `measurement_revision` vigente (memória), multiplicador e total efetivo | FK para a revisão de medição imutável; imutável |
 | `revision_line` | Linhas efetivas com as colunas de dimensão da consolidação | índice por revisão; imutável |
 | `revision_label` | Rótulo (código e nome) de cada entidade referenciada, na emissão | PK `(revisionId, entityId)`; imutável |
+
+## Tabelas (F9 — arquivos e importação)
+| Tabela | Finalidade | Restrições relevantes |
+|---|---|---|
+| `document` | Arquivo enviado: nome original, tipo verificado pela assinatura, MIME, tamanho, SHA-256, chave de armazenamento aleatória | tipo em XLSX/CSV/PDF/PNG/JPEG e tamanho > 0 (CHECK); `UNIQUE(storageKey)`; **imutável** (trigger) — ADR-019 |
+| `import_job` | Importação em etapas: tipo, arquivo, abas, cabeçalhos, mapeamento, resumo, situação | encerrada (aplicada/cancelada) não muda (trigger); bloqueio otimista por `version` |
+| `import_row` | Área de preparação: valores brutos, situação da validação, mensagens e dados normalizados | PK `(jobId, rowNumber)`; apagada ao cancelar |
+
+Também: `measurement_revision.documentId` (arquivo de origem, FK por organização) e o método `IMPORTED` em `MeasurementMethod`.

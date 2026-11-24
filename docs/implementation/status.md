@@ -46,7 +46,7 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F6 | Replicação por tipologia com substituição por unidade e particularidades | Concluída | `measurement.test.ts` (cenário B 60/40/20), `measurements.test.ts` |
 | F6 | Fórmula nova não recalcula; lista de desatualizadas e recálculo explícito | Concluída | `measurements.test.ts`, E2E |
 | F6 | Telas Quantitativos e Memórias de cálculo | Concluída | E2E, revisão visual desktop/390px |
-| F6 | Documento de origem como arquivo anexado | Planejada | hoje é referência textual; upload na F9 |
+| F6 | Documento de origem como arquivo anexado | Concluída na F9 | `io.test.ts`, E2E F9 |
 | F7 | Consolidação de referência no domínio (somas exatas por dimensão, separadas por unidade) | Concluída | `consolidate.test.ts` |
 | F7 | Consolidação em SQL com replicação por tipologia, particularidades, substituições e conversão de unidade | Concluída | `consolidation.test.ts` (valores conhecidos, cenários B e C) |
 | F7 | Equivalência SQL × referência do domínio | Concluída | `consolidation.test.ts` (14 combinações de agrupamento e filtro) |
@@ -59,7 +59,13 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F8 | Consolidação e detalhamento sobre a fotografia, até a memória de cálculo congelada | Concluída | `revisions.test.ts`, E2E |
 | F8 | Permissão de emissão (coordenador ou administrador) | Concluída | `revisions.test.ts` (editor recebe 403) |
 | F8 | Histórico por entidade (medições e nós da EAP) | Concluída | `revisions.test.ts` (filtro da auditoria), E2E |
-| F9–F10 | Demais fases | Planejada | ver plano, seção 10 |
+| F9 | Upload seguro: assinatura do conteúdo, limite de tamanho, zip bomb, nome aleatório fora da raiz pública, download protegido | Concluída | `io.test.ts` (domínio e API) |
+| F9 | Importação em 9 etapas com área de preparação, mapeamento sugerido e validação; nada gravado antes da confirmação | Concluída | `io.test.ts`, E2E |
+| F9 | Importação de serviços (catálogo e do empreendimento), cadastro físico (hierarquia, novo módulo, ciclos) e medições (dupla contagem no banco e no arquivo) | Concluída | `io.test.ts` |
+| F9 | Exportações XLSX/CSV/PDF de cadastro, EAP, serviços, quantitativos, memórias, consolidação (atual e de revisão) e comparação | Concluída | `io.test.ts` (todos os relatórios × formatos) |
+| F9 | Exportar → reimportar preserva códigos e quantidades | Concluída | `io.test.ts` (medições e cadastro), E2E |
+| F9 | Neutralização de injeção de fórmula em CSV e XLSX | Concluída | `io.test.ts` |
+| F10 | Qualidade e preparação para produção | Planejada | ver plano, seção 10 |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 94 · `apps/api` (integração, Postgres real): 130 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 11
+- `packages/domain`: 100 · `apps/api` (integração, Postgres real): 138 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 12

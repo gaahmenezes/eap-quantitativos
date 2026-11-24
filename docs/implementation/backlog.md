@@ -1,10 +1,17 @@
 # Backlog técnico
 
-## Próximo (F9 — Importação e exportação)
-- Importação em etapas (arquivo → área de preparação → mapeamento → validação → prévia → confirmação → relatório) para serviços, cadastro físico e medições, em XLSX e CSV; nada gravado antes da confirmação.
-- Upload seguro: limite de tamanho, verificação de assinatura, nome aleatório, armazenamento fora da raiz pública, limites de linhas/zip bomb.
-- Exportações XLSX/CSV/PDF de cadastro, EAP, quantitativos, memórias, consolidações e revisões, com neutralização de injeção de fórmula (= + - @).
-- Documento de origem das medições como arquivo anexado (pendente da F6).
+## Próximo (F10 — Qualidade e preparação para produção)
+- E2E completos dos cenários A–D pela interface.
+- Auditoria de segurança independente; testes de carga; avaliação de RLS no Postgres como defesa adicional.
+- Backup/restore (banco + diretório de arquivos) documentado; guia de implantação; armazenamento de objetos (S3) para os arquivos.
+- Avaliar crescimento das fotografias de revisão (linhas efetivas) e estratégia de arquivamento.
+- Falha intermitente observada uma vez no `beforeAll` do cenário B de `measurements.test.ts` (não reproduzida em 8 execuções); investigar sob carga.
+
+## Decisões da F9 a validar com o usuário
+- Separador padrão do CSV exportado é `;` (Excel em português); na leitura, `;`, `,` e tabulação são detectados.
+- Âncoras na planilha de medições: código do cadastro; `REDE/TRECHO` e `REDE/DISPOSITIVO`; nome do elemento físico (precisa ser único); `TIPOLOGIA › caminho do elemento` com a coluna "Unidade habitacional" para medição própria.
+- Importação não atualiza registros existentes (só inclui); códigos repetidos são erro.
+- Limites: 20 MB por arquivo, 20.000 linhas e 50 colunas por importação.
 
 ## Decisões da F8 a validar com o usuário
 - Numeração começa em R00 e é sequencial; revisões não têm rascunho: emitir já congela.

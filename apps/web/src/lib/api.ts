@@ -71,3 +71,39 @@ export async function api<T>(
 
 export const errorMessage = (e: unknown): string =>
   e instanceof ApiError ? (e.problem.detail ?? e.problem.title) : 'Erro inesperado.';
+
+async function failure(res: Response): Promise<never> {
+  const text = await res.text();
+  let p: Partial<ProblemDetails> = {};
+  try { p = text ? (JSON.parse(text) as Partial<ProblemDetails>) : {}; } catch { /* corpo não JSON */ }
+  throw new ApiError({ type: p.type ?? 'about:blank', title: p.title ?? 'Erro', status: res.status, code: p.code ?? `HTTP_${res.status}`, detail: p.detail ?? `Erro ${res.status}`, errors: p.errors, requestId: p.requestId });
+}
+
+/** Envio de arquivo (multipart) com CSRF. */
+export async function uploadFile<T>(path: string, file: File, fields: Record<string, string> = {}): Promise<T> {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  form.append('file', file);
+  const res = await fetch(`/api${path}`, { method: 'POST', body: form, credentials: 'same-origin', headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {} });
+  if (!res.ok) return failure(res);
+  return (await res.json()) as T;
+}
+
+/** Baixa um arquivo gerado pela API (exportações) e oferece para salvar. */
+export async function downloadFile(method: 'GET' | 'POST', path: string, body?: unknown): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  const res = await fetch(`/api${path}`, { method, headers, credentials: 'same-origin', body: body !== undefined ? JSON.stringify(body) : undefined });
+  if (!res.ok) return failure(res);
+  const cd = res.headers.get('Content-Disposition') ?? '';
+  const name = decodeURIComponent(/filename\*=UTF-8''([^;]+)/.exec(cd)?.[1] ?? 'arquivo');
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

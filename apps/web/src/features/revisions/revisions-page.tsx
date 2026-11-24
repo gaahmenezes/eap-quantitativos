@@ -12,6 +12,7 @@ import { api, errorMessage } from '../../lib/api';
 import { fmtDateTime, fmtQty } from '../../lib/format';
 import { useSession } from '../auth/session';
 import { useProject } from '../projects/api';
+import { ExportButton } from '../../components/export-button';
 import { revKeys, useCompare, useRevisions } from './api';
 
 const nextCode = (n: number) => `R${String(n).padStart(2, '0')}`;
@@ -82,6 +83,7 @@ export function RevisionsPage() {
                   {list.filter((r) => r.id !== sel.id).map((r) => <option key={r.id} value={r.id}>{r.code} — {r.title}</option>)}
                 </SelectField>
               </div>
+              {target && <div><ExportButton label="Exportar comparação" path={`/projects/${p.id}/exports`} body={{ report: 'revision-compare', revisionId: sel.id, compareTo: target }} /></div>}
               <CompareView projectId={p.id} from={sel.id} to={target} />
             </section>
           )}

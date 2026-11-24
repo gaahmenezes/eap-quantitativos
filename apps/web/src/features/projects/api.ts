@@ -26,7 +26,7 @@ export function useProjects(q: Partial<ListProjectsQuery>) {
 }
 
 export const useProject = (id: string) =>
-  useQuery({ queryKey: projectKeys.one(id), queryFn: () => api<ProjectDto>('GET', `/projects/${id}`) });
+  useQuery({ queryKey: projectKeys.one(id), queryFn: () => api<ProjectDto>('GET', `/projects/${id}`), enabled: !!id });
 
 export const useProjectMembers = (id: string) =>
   useQuery({ queryKey: projectKeys.members(id), queryFn: () => api<ProjectMemberDto[]>('GET', `/projects/${id}/members`) });

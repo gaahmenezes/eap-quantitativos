@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import type { CategoryDto, ProjectDto, ServiceDto, ServiceSaveResult, SimilarServiceDto, UnitDto } from '@eapq/contracts';
 import { baseUnitSymbol, compareUnitsForDisplay, describeDimension, projectPermissions } from '@eapq/domain';
 import { Breadcrumbs, PageHeader } from '../../app/shell';
@@ -11,6 +11,7 @@ import { SidePanel } from '../../components/ui/panel';
 import { api, errorMessage } from '../../lib/api';
 import { useSession } from '../auth/session';
 import { useProjects } from '../projects/api';
+import { ExportButton } from '../../components/export-button';
 import { categoryTree, libKeys, useCategories, useServices, useUnits } from './api';
 
 const ORIGIN = { CATALOG: 'Catálogo', PROJECT: 'Empreendimento', DUPLICATE: 'Duplicado', IMPORT: 'Importado' } as const;
@@ -94,6 +95,8 @@ function ServicesTab() {
               <option value="ACTIVE">Ativos</option><option value="ARCHIVED">Arquivados</option><option value="ALL">Todos</option>
             </select>
           </label>
+          <ExportButton path={projectId ? `/projects/${projectId}/exports` : '/exports'} body={{ report: 'services' }} />
+          {canEdit && <Link to={projectId ? `/empreendimentos/${projectId}/importacoes` : '/importacoes'} className="inline-flex h-9 items-center rounded-[3px] border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar</Link>}
           {canEdit && <Button variant="primary" onClick={() => setPanel('new')}>{projectId ? 'Novo serviço do empreendimento' : 'Novo serviço'}</Button>}
         </div>
         {list.isPending ? <Loading /> : list.isError ? <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} /> : list.data.total === 0 ? (

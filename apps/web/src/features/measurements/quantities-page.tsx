@@ -15,6 +15,7 @@ import { useProject } from '../projects/api';
 import { mKeys, useMeasurement, useMeasurements, useOutdated, useSummary } from './api';
 import { MeasurementForm } from './measurement-form';
 import { MemoryView } from './memory-view';
+import { ExportButton } from '../../components/export-button';
 import { EntityHistory } from '../../components/entity-history';
 
 const ANCHOR_KIND: Record<string, string> = { STRUCTURE_NODE: 'Cadastro', TYPOLOGY_ELEMENT: 'Tipologia', NETWORK_SEGMENT: 'Trecho', NETWORK_NODE: 'Dispositivo', PHYSICAL_ELEMENT: 'Elemento' };
@@ -53,9 +54,15 @@ export function QuantitiesPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: 'Empreendimentos', to: '/empreendimentos' }, { label: p.name, to: `/empreendimentos/${p.id}` }, { label: 'Quantitativos' }]} />
-      <div className="mb-4 border-b border-line pb-4">
-        <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight">Quantitativos</h1>
-        <p className="mt-1 text-[14px] text-muted"><span className="font-mono text-ink">{p.code}</span> {p.name}</p>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+        <div>
+          <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight">Quantitativos</h1>
+          <p className="mt-1 text-[14px] text-muted"><span className="font-mono text-ink">{p.code}</span> {p.name}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportButton path={`/projects/${p.id}/exports`} body={{ report: 'measurements' }} />
+          {canEdit && <Link to={`/empreendimentos/${p.id}/importacoes`} className="inline-flex h-9 items-center rounded-[3px] border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar medições</Link>}
+        </div>
       </div>
       {p.status === 'ARCHIVED' && <div className="mb-4"><Notice tone="warn">Empreendimento arquivado: quantitativos disponíveis apenas para consulta.</Notice></div>}
       {items.length === 0 ? (
@@ -217,6 +224,7 @@ export function MeasurementDetail({ projectId, id, canEdit, onRevise }: { projec
             </header>
             {r.reason && <p className="mb-1"><span className="text-muted">Motivo:</span> {r.reason}</p>}
             {r.sourceReference && <p className="mb-1"><span className="text-muted">Documento de origem:</span> {r.sourceReference}</p>}
+            {r.document && <p className="mb-1"><span className="text-muted">Arquivo:</span> <a className="text-cyan-ink hover:underline" href={`/api/projects/${projectId}/documents/${r.document.id}`}>{r.document.fileName}</a> <span className="text-muted">({Math.ceil(r.document.size / 1024)} KB)</span></p>}
             {r.notes && <p className="mb-1 whitespace-pre-line">{r.notes}</p>}
             <MemoryView memory={r.memory} />
           </article>

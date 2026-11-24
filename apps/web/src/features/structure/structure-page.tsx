@@ -23,6 +23,7 @@ import { useProject } from '../projects/api';
 import { useStructure, useStructureMutations, useTypologies } from './api';
 import { ancestorsOf, indexStructure, isInSubtree, visibleRows, type TreeIndex, type TreeRow } from './tree-model';
 import { TypologiesTab } from './typologies-tab';
+import { ExportButton } from '../../components/export-button';
 import { NodeElements } from './node-elements';
 
 const SUMMARY_KINDS: NodeKindDto[] = ['PHASE', 'BLOCK_QUADRA', 'LOT', 'TOWER', 'FLOOR', 'DWELLING_UNIT', 'COMMON_AREA', 'STREET', 'STREET_SECTION'];
@@ -54,11 +55,15 @@ export function StructurePage() {
             <span className="font-mono text-ink">{p.code}</span> {p.name}
           </p>
         </div>
-        {canEdit && (
-          <Link to={`/empreendimentos/${p.id}/cadastro/assistente`} className="inline-flex h-9 items-center rounded-[3px] bg-cyan-ink px-3.5 text-[14px] font-medium text-white hover:bg-cyan-ink-dark">
-            {s.modules.length ? 'Acrescentar pelo assistente' : 'Estruturar pelo assistente'}
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {s.modules.length > 0 && <ExportButton path={`/projects/${p.id}/exports`} body={{ report: 'structure' }} />}
+          {canEdit && <Link to={`/empreendimentos/${p.id}/importacoes`} className="inline-flex h-9 items-center rounded-[3px] border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar</Link>}
+          {canEdit && (
+            <Link to={`/empreendimentos/${p.id}/cadastro/assistente`} className="inline-flex h-9 items-center rounded-[3px] bg-cyan-ink px-3.5 text-[14px] font-medium text-white hover:bg-cyan-ink-dark">
+              {s.modules.length ? 'Acrescentar pelo assistente' : 'Estruturar pelo assistente'}
+            </Link>
+          )}
+        </div>
       </div>
 
       {p.status === 'ARCHIVED' && <div className="mb-4"><Notice tone="warn">Empreendimento arquivado: o cadastro está disponível apenas para consulta.</Notice></div>}

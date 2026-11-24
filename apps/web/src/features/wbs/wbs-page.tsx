@@ -15,6 +15,7 @@ import { fmtDateTime } from '../../lib/format';
 import { useSession } from '../auth/session';
 import { useProject } from '../projects/api';
 import { EntityHistory } from '../../components/entity-history';
+import { ExportButton } from '../../components/export-button';
 import { useStructure } from '../structure/api';
 
 const wbsKey = (id: string) => ['project', id, 'wbs'] as const;
@@ -50,7 +51,10 @@ export function WbsPage() {
           <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight">EAP</h1>
           <p className="mt-1 text-[14px] text-muted"><span className="font-mono text-ink">{p.code}</span> {p.name}</p>
         </div>
-        {canEdit && modules.length > 0 && <Button variant="primary" onClick={() => setGenerating(true)}>{w.runs.length ? 'Regenerar EAP' : 'Gerar EAP'}</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          {w.nodes.length > 0 && <ExportButton path={`/projects/${p.id}/exports`} body={{ report: 'wbs' }} />}
+          {canEdit && modules.length > 0 && <Button variant="primary" onClick={() => setGenerating(true)}>{w.runs.length ? 'Regenerar EAP' : 'Gerar EAP'}</Button>}
+        </div>
       </div>
       {p.status === 'ARCHIVED' && <div className="mb-4"><Notice tone="warn">Empreendimento arquivado: a EAP está disponível apenas para consulta.</Notice></div>}
 

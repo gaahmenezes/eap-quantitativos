@@ -79,7 +79,10 @@ export function renderPdf(r: Report): Promise<Buffer> {
     const range = doc.bufferedPageRange();
     for (let i = 0; i < range.count; i++) {
       doc.switchToPage(i);
-      doc.font('Helvetica').fontSize(7).fillColor('#5b6873').text(`Página ${i + 1} de ${range.count}`, left, doc.page.height - doc.page.margins.bottom - 4, { width, align: 'right', lineBreak: false });
+      const bottom = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0; // o rodapé fica na margem; sem isso o pdfkit o descarta
+      doc.font('Helvetica').fontSize(7).fillColor('#5b6873').text(`Página ${i + 1} de ${range.count}`, left, doc.page.height - bottom + 10, { width, align: 'right', lineBreak: false });
+      doc.page.margins.bottom = bottom;
     }
     doc.end();
   });
