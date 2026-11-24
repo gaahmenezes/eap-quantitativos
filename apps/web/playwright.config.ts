@@ -20,7 +20,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'pnpm --filter @eapq/api exec prisma migrate deploy && pnpm --filter @eapq/api dev',
+      command: 'pnpm --filter @eapq/api exec prisma migrate deploy && pnpm --filter @eapq/api serve',
       url: `http://localhost:${API_PORT}/api/health`,
       reuseExistingServer: false,
       timeout: 60_000,

@@ -12,7 +12,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:dev": "prisma migrate dev",
-    "seed": "node --env-file-if-exists=.env --import @swc-node/register/esm-register prisma/seed.ts"
+    "seed": "node --env-file-if-exists=.env --import @swc-node/register/esm-register prisma/seed.ts",
+    "serve": "node --env-file-if-exists=.env --import @swc-node/register/esm-register src/main.ts"
   },
   "dependencies": {
     "@eapq/contracts": "workspace:*",
