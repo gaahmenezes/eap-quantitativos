@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   'project.archive',
   'project.members.manage',
   'project.content.edit', // cadastro físico, EAP, medições (fases seguintes)
+  'project.revisions.issue', // emitir revisões formais (R00, R01…)
   'audit.read',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
@@ -36,6 +37,7 @@ const PROJECT_LEVEL: Record<ProjectRole, readonly Permission[]> = {
     'project.archive',
     'project.members.manage',
     'project.content.edit',
+    'project.revisions.issue',
     'audit.read',
   ],
   EDITOR: ['project.read', 'project.content.edit', 'audit.read'],

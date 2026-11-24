@@ -39,9 +39,9 @@ export class AuditService {
     });
   }
 
-  async listForProject(organizationId: string, projectId: string, limit = 200): Promise<AuditEntryDto[]> {
+  async listForProject(organizationId: string, projectId: string, limit = 200, filter: { entityId?: string; entityType?: string } = {}): Promise<AuditEntryDto[]> {
     const rows = await this.prisma.auditLog.findMany({
-      where: { organizationId, projectId },
+      where: { organizationId, projectId, ...(filter.entityId && { entityId: filter.entityId }), ...(filter.entityType && { entityType: filter.entityType }) },
       orderBy: [{ at: 'desc' }, { id: 'desc' }],
       take: Math.min(Math.max(limit, 1), 500),
       include: { actor: { select: { id: true, name: true } } },

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { z } from 'zod';
 import {
+  auditQuery,
   archiveProjectSchema,
   createProjectSchema,
   listProjectsQuery,
@@ -112,7 +113,7 @@ export class ProjectsController {
 
   @Get(':projectId/audit')
   @ProjectPermission('audit.read')
-  history(@Auth() auth: AuthContext, @Param('projectId', uuidPipe) id: string) {
-    return this.audit.listForProject(auth.organizationId, id);
+  history(@Auth() auth: AuthContext, @Param('projectId', uuidPipe) id: string, @Query(new ZodPipe(auditQuery)) q: { entityId?: string; entityType?: string }) {
+    return this.audit.listForProject(auth.organizationId, id, 200, q);
   }
 }

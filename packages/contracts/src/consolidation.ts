@@ -15,12 +15,15 @@ export const consolidationFiltersSchema = z.partialRecord(consolidationDimension
 export type ConsolidationFiltersInput = z.infer<typeof consolidationFiltersSchema>;
 
 export const consolidationQuerySchema = z.object({
+  /** Base: revisão emitida (fotografia) ou, se ausente, o estado atual. */
+  revisionId: z.uuid().optional(),
   groupBy: z.array(consolidationDimensionSchema).max(4).refine((xs) => new Set(xs).size === xs.length, 'Dimensão repetida'),
   filters: consolidationFiltersSchema.default({}),
 });
 export type ConsolidationQueryInput = z.infer<typeof consolidationQuerySchema>;
 
 export const consolidationLinesSchema = z.object({
+  revisionId: z.uuid().optional(),
   filters: consolidationFiltersSchema.default({}),
   limit: z.number().int().min(1).max(500).default(200),
 });
@@ -37,5 +40,5 @@ export interface ConsolidationResultDto {
 
 export interface ConsolidationLinesDto {
   total: number;
-  lines: { measurementId: string; wbsCode: string; wbsTitle: string; serviceCode: string; anchorLabel: string; unitLabel: string | null; quantity: string; unit: string }[];
+  lines: { measurementId: string; measurementRevisionId: string | null; wbsCode: string; wbsTitle: string; serviceCode: string; anchorLabel: string; unitLabel: string | null; quantity: string; unit: string }[];
 }

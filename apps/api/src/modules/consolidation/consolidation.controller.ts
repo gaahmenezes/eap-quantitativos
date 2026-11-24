@@ -22,6 +22,6 @@ export class ConsolidationController {
   @ProjectPermission('project.read')
   @HttpCode(200)
   lines(@Param('projectId', uuidPipe) p: string, @Body(new ZodPipe(consolidationLinesSchema)) b: z.infer<typeof consolidationLinesSchema>) {
-    return this.svc.lines(p, b.filters, b.limit);
+    return this.svc.lines(p, b.filters, b.limit, b.revisionId);
   }
 }
