@@ -104,3 +104,31 @@ export function validateUnit(u: { symbol: string; factor: string; decimals: numb
   for (const k of ['L', 'M', 'T', 'N'] as const) if (!Number.isInteger(u.dimension[k]) || Math.abs(u.dimension[k]) > 4) issues.push(`Expoente ${k} deve ser inteiro entre -4 e 4.`);
   return issues;
 }
+
+/** Símbolo da unidade base (SI) de uma dimensão: m, m², kg, W, Pa, m³/s… */
+export function baseUnitSymbol(d: Dimension): string {
+  const named: [Dimension, string][] = [
+    [dim(2, 1, -3), 'W'], [dim(-1, 1, -2), 'Pa'], [dim(1, 1, -2), 'N'], [dim(3, 0, -1), 'm³/s'], [dim(1, 0, -1), 'm/s'],
+    [dim(-3, 1), 'kg/m³'], [dim(-1, 1), 'kg/m'], [dim(0, 0, 0, 1), 'un'], [DIMENSIONLESS, '1'],
+  ];
+  const hit = named.find(([k]) => sameDimension(k, d));
+  if (hit) return hit[1];
+  const parts: string[] = [];
+  const add = (sym: string, e: number) => { if (e) parts.push(`${sym}${sup(e)}`); };
+  add('m', d.L); add('kg', d.M); add('s', d.T); add('un', d.N);
+  return parts.join('·');
+}
+
+const QUANTITY_ORDER = ['Comprimento', 'Área', 'Volume', 'Massa', 'Tempo', 'Contagem', 'Adimensional'];
+/** Ordenação de exibição: grandezas mais usadas em levantamento primeiro, depois por fator. */
+export function compareUnitsForDisplay(a: { dimension: Dimension; factor: string }, b: { dimension: Dimension; factor: string }): number {
+  const qa = QUANTITY_ORDER.indexOf(describeDimension(a.dimension));
+  const qb = QUANTITY_ORDER.indexOf(describeDimension(b.dimension));
+  const ra = qa < 0 ? 99 : qa;
+  const rb = qb < 0 ? 99 : qb;
+  if (ra !== rb) return ra - rb;
+  const da = describeDimension(a.dimension);
+  const db = describeDimension(b.dimension);
+  if (da !== db) return da.localeCompare(db, 'pt-BR');
+  return new Decimal(a.factor).comparedTo(b.factor);
+}

@@ -17,3 +17,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [011](011-misto-por-modulos.md) | Empreendimento misto como composição de módulos | Aceita |
 | [012](012-catalogo-tecnico-por-organizacao.md) | Catálogo técnico por organização, copiado de um padrão | Aceita |
 | [013](013-revisoes-de-tipologia-e-propagacao.md) | Revisões de tipologia, unidade fixada e propagação explícita | Aceita |
+| [014](014-unidades-e-biblioteca-de-servicos.md) | Unidades com dimensão e fator exato; biblioteca de serviços em dois escopos | Aceita |

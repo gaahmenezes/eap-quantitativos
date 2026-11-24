@@ -1,10 +1,16 @@
 # Backlog técnico
 
-## Próximo (F4 — Unidades de medida e biblioteca de serviços)
-- `UnitOfMeasure` com vetor dimensional e fator para a base (NUMERIC) em `packages/domain/src/units`; conversões testadas com valores conhecidos.
-- Ligar os atributos numéricos do catálogo (hoje com símbolo de unidade em texto) ao cadastro formal de unidades.
-- Categorias e serviços (padrão da organização e específicos do empreendimento), duplicação, aviso de descrição similar (pg_trgm), código único.
-- Sem preços, custos ou composições (regra 1).
+## Próximo (F5 — Templates e motor de EAP)
+- Modelos `WbsTemplate`, `WbsTemplateVersion` (rascunho/publicada imutável) e `WbsTemplateNode` (título com variáveis, tipo agrupador/quantificável, condição, repetição sobre torres/pavimentos/tipologias/quadras/redes…, formato de código, serviços sugeridos).
+- Linguagem de condições segura sobre os fatos do empreendimento (mesmo parser das fórmulas, sem eval).
+- `generateWbs` e `diffWbs` puros e determinísticos em `packages/domain`; prévia de geração/regeneração; nós com medição nunca apagados; nós manuais intocados.
+- Editor de EAP (árvore, mover, reordenar, duplicar, exclusão controlada, indicadores de preenchimento) e `WbsGenerationRun`.
+- Templates iniciais para os 5 tipos de módulo; aceite com os cenários A–D.
+
+## Decisões da F4 a validar com o usuário
+- Unidades e serviços iniciais (exemplo editável); "verba" não foi incluída por ter conotação financeira — use "cj" (conjunto) ou "un".
+- Limiar de similaridade de descrição: 0,45 (trigramas); ajuste se gerar avisos demais ou de menos.
+- Código de serviço específico do empreendimento não pode repetir um código do catálogo da organização.
 
 ## Decisões da F3 a validar com o usuário
 - Catálogo padrão inicial (sistemas, dispositivos, trechos e elementos com atributos) — ajuste os nomes e atributos ao padrão da empresa.

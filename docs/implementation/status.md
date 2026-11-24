@@ -27,8 +27,13 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F3 | Infraestrutura: sistemas, redes, dispositivos, trechos com declividade/profundidade derivadas | Concluída | `segment.test.ts` (valores conhecidos), `infra.test.ts` (cenário C), E2E de drenagem |
 | F3 | Elementos físicos de sistemas sem rede e de áreas comuns | Concluída | `infra.test.ts`; inspetor do cadastro |
 | F3 | Revisões de tipologia imutáveis, propagação explícita, particularidades append-only | Concluída | `resolution.test.ts`, `constructive.test.ts` (cenário B), E2E construtivo |
-| F4 | Unidades de medida e biblioteca de serviços | Planejada | — |
+| F4 | Unidades de medida com dimensão, conversão decimal exata e unidades próprias | Concluída | `units.test.ts` (valores conhecidos), `library.test.ts`; aba Unidades |
+| F4 | Categorias e biblioteca de serviços (catálogo e específicos do empreendimento) | Concluída | `library.test.ts`, E2E biblioteca |
+| F4 | Aviso de descrição similar (pg_trgm) e bloqueio de código duplicado | Concluída | `library.test.ts`, E2E biblioteca |
+| F4 | Duplicação com origem registrada; arquivamento auditado | Concluída | `library.test.ts` |
+| F4 | Unidade dos atributos do catálogo técnico validada contra o cadastro de unidades | Concluída | `library.test.ts`; seletor no catálogo técnico |
+| F4 | Fórmulas compatíveis por serviço | Planejada | F6 (motor de fórmulas) |
 | F5–F10 | Demais fases | Planejada | ver plano, seção 10 |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 38 · `apps/api` (integração, Postgres real): 76 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 6
+- `packages/domain`: 48 · `apps/api` (integração, Postgres real): 92 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 7

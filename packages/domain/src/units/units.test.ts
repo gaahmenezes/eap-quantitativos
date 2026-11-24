@@ -61,3 +61,20 @@ describe('normalização de descrição', () => {
     expect(normalizeDescription('Piso cerâmico')).toBe(normalizeDescription('PISO  CERAMICO.'));
   });
 });
+
+describe('exibição de unidades', () => {
+  it('símbolo da base SI por dimensão', async () => {
+    const { baseUnitSymbol } = await import('./units.js');
+    expect(baseUnitSymbol(U('kPa').dimension)).toBe('Pa');
+    expect(baseUnitSymbol(U('cv').dimension)).toBe('W');
+    expect(baseUnitSymbol(U('L/s').dimension)).toBe('m³/s');
+    expect(baseUnitSymbol(U('cm²').dimension)).toBe('m²');
+    expect(baseUnitSymbol(U('%').dimension)).toBe('1');
+  });
+  it('ordena comprimento, área e volume antes de grandezas derivadas', async () => {
+    const { compareUnitsForDisplay } = await import('./units.js');
+    const sorted = [...DEFAULT_UNITS].sort(compareUnitsForDisplay).map((u) => u.symbol);
+    expect(sorted.slice(0, 4)).toEqual(['mm', 'cm', 'm', 'km']);
+    expect(sorted.indexOf('m²')).toBeLessThan(sorted.indexOf('kPa'));
+  });
+});

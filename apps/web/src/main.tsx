@@ -22,6 +22,7 @@ import { WizardPage } from './features/structure/wizard-page';
 import { InfrastructurePage } from './features/infrastructure/infrastructure-page';
 import { ConstructivePage } from './features/constructive/constructive-page';
 import { CatalogPage } from './features/catalog/catalog-page';
+import { LibraryPage } from './features/library/library-page';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +58,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="empreendimentos/:projectId/cadastro/assistente" element={<WizardPage />} />
               <Route path="empreendimentos/:projectId/infraestrutura" element={<InfrastructurePage />} />
               <Route path="empreendimentos/:projectId/construtivo" element={<ConstructivePage />} />
+              <Route path="servicos" element={<LibraryPage />} />
               <Route path="administracao" element={<AdminPage />} />
               <Route path="administracao/catalogo" element={<CatalogPage />} />
               <Route path="*" element={<EmptyState title="Página não encontrada">Verifique o endereço ou use o menu lateral.</EmptyState>} />

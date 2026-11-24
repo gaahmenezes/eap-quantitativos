@@ -9,6 +9,7 @@ import { SidePanel } from '../../components/ui/panel';
 import { api, errorMessage } from '../../lib/api';
 import { useSession } from '../auth/session';
 import { catalogKeys, useElementTypes, useSystemTypes } from './api';
+import { useUnits } from '../library/api';
 
 const CATEGORY = { NETWORK_NODE: 'Dispositivo de rede', NETWORK_SEGMENT: 'Trecho de rede', ELEMENT: 'Elemento' } as const;
 const DTYPE = { NUMBER: 'Número', TEXT: 'Texto', BOOLEAN: 'Sim/não', ENUM: 'Lista' } as const;
@@ -105,6 +106,7 @@ function ElementTypeForm({ initial, systems, onDone }: { initial?: ElementTypeDt
   const [category, setCategory] = useState<ElementTypeDto['category']>(initial?.category ?? 'ELEMENT');
   const [attrs, setAttrs] = useState<AttributeDefinitionDto[]>(initial?.attributes ?? []);
   const act = useAction([catalogKeys.elements]);
+  const units = useUnits();
   const sys = systems.find((s) => s.id === systemTypeId);
   const set = (i: number, patch: Partial<AttributeDefinitionDto>) => setAttrs((a) => a.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const payloadAttrs = attrs.map((a) => ({
@@ -160,7 +162,10 @@ function ElementTypeForm({ initial, systems, onDone }: { initial?: ElementTypeDt
                 {Object.entries(DTYPE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
               {a.dataType === 'NUMBER' && <>
-                <input aria-label={`Unidade do atributo ${i + 1}`} placeholder="unidade (m, m², mm)" className={`${ctl} w-28`} value={a.unit ?? ''} onChange={(e) => set(i, { unit: e.target.value })} />
+                <select aria-label={`Unidade do atributo ${i + 1}`} className={`${ctl} w-28 font-mono`} value={a.unit ?? ''} onChange={(e) => set(i, { unit: e.target.value })}>
+                  <option value="">sem unidade</option>
+                  {(units.data ?? []).filter((u) => !u.archivedAt || u.symbol === a.unit).map((u) => <option key={u.id} value={u.symbol}>{u.symbol}</option>)}
+                </select>
                 <input aria-label={`Mínimo do atributo ${i + 1}`} placeholder="mín." className={`${ctl} w-20 font-mono`} value={a.min ?? ''} onChange={(e) => set(i, { min: e.target.value })} />
                 <input aria-label={`Máximo do atributo ${i + 1}`} placeholder="máx." className={`${ctl} w-20 font-mono`} value={a.max ?? ''} onChange={(e) => set(i, { max: e.target.value })} />
               </>}

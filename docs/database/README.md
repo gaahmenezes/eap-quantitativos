@@ -49,3 +49,10 @@ As regras de hierarquia (quais tipos aceitam quais filhos em cada módulo) ficam
 | `dwelling_unit.pinnedRevisionId` | Revisão publicada que vale para a unidade | trigger: revisão publicada da própria tipologia |
 
 A declividade e as profundidades dos trechos não são armazenadas: são derivadas em decimal (`packages/domain/src/infra/segment.ts`) a partir das cotas, para nunca divergirem dos dados de origem.
+
+## Tabelas (F4 — unidades e biblioteca de serviços)
+| Tabela | Finalidade | Restrições relevantes |
+|---|---|---|
+| `unit_of_measure` | Unidade da organização: símbolo, nome, expoentes `dimL/dimM/dimT/dimN`, fator `NUMERIC(40,30)` para a base, casas decimais | `UNIQUE(organizationId, symbol)`; fator > 0; expoentes em [-4, 4]; dimensão e fator imutáveis quando usada (trigger) — ADR-014 |
+| `service_category` | Árvore de categorias da biblioteca | `UNIQUE(organizationId, code)`; pai na mesma organização (FK composta); sem auto-referência |
+| `service` | Serviço técnico: código, descrição (e descrição normalizada), categoria, unidade, critério de medição, descrição técnica, origem, `derivedFromId` | código único no catálogo (`projectId IS NULL`) e por empreendimento (índices parciais); índice GIN `pg_trgm` na descrição normalizada; FKs compostas por organização; **nenhum campo financeiro** |

@@ -17,7 +17,7 @@ interface NavItem {
 const GLOBAL: NavItem[] = [
   { label: 'Dashboard', to: '/' },
   { label: 'Empreendimentos', to: '/empreendimentos' },
-  { label: 'Biblioteca de serviços', phase: 4 },
+  { label: 'Biblioteca de serviços', to: '/servicos' },
   { label: 'Templates', phase: 5 },
   { label: 'Administração', to: '/administracao' },
 ];
