@@ -140,9 +140,12 @@ model Project {
   createdAt      DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime              @updatedAt @db.Timestamptz(3)
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   members      ProjectMember[]
   auditLogs    AuditLog[]
+  modules      ProjectModule[]
+  nodes        StructureNode[]
+  typologies   DwellingTypology[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, code])
@@ -188,4 +191,149 @@ model AuditLog {
   @@index([organizationId, entityType, entityId])
   @@index([organizationId, projectId, at])
   @@map("audit_log")
+}
+
+// ===================== F2 — Cadastro físico =====================
+
+enum ModuleKind {
+  VERTICAL_RESIDENTIAL
+  HORIZONTAL_RESIDENTIAL
+  LAND_SUBDIVISION
+  COMMON_AREAS
+  INFRASTRUCTURE
+}
+
+enum StructureNodeKind {
+  PHASE
+  STAGE
+  SECTOR
+  BLOCK_QUADRA
+  LOT
+  STREET
+  STREET_SECTION
+  TOWER
+  BUILDING_BLOCK
+  FLOOR
+  DWELLING_UNIT
+  COMMON_AREA
+  TECHNICAL_AREA
+  INSTITUTIONAL_AREA
+  GREEN_AREA
+}
+
+enum NodeOrigin {
+  WIZARD
+  MANUAL
+  DUPLICATE
+}
+
+enum TypologyKind {
+  APARTMENT
+  HOUSE
+}
+
+/// Módulo do empreendimento (ADR-011). Misto = vários módulos.
+model ProjectModule {
+  id             String     @id @default(uuid(7)) @db.Uuid
+  organizationId String     @db.Uuid
+  projectId      String     @db.Uuid
+  kind           ModuleKind
+  name           String     @db.VarChar(120)
+  position       Int
+  code           String     @db.VarChar(20)
+  archivedAt     DateTime?  @db.Timestamptz(3)
+  version        Int        @default(1)
+  createdAt      DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime   @updatedAt @db.Timestamptz(3)
+
+  project Project         @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  nodes   StructureNode[]
+
+  @@unique([id, organizationId])
+  @@unique([id, projectId])
+  @@index([organizationId, projectId])
+  @@map("project_module")
+}
+
+/// Nó do cadastro físico (adjacência + caminho materializado, ADR-005).
+/// `path` = IDs dos ancestrais separados por "/" (inclui o próprio id ao final).
+model StructureNode {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  organizationId String            @db.Uuid
+  projectId      String            @db.Uuid
+  moduleId       String            @db.Uuid
+  parentId       String?           @db.Uuid
+  kind           StructureNodeKind
+  name           String            @db.VarChar(120)
+  position       Int
+  depth          Int
+  path           String            @db.Text
+  code           String            @db.VarChar(80)
+  origin         NodeOrigin        @default(MANUAL)
+  archivedAt     DateTime?         @db.Timestamptz(3)
+  version        Int               @default(1)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
+
+  project  Project         @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  module   ProjectModule   @relation(fields: [moduleId, projectId], references: [id, projectId], onDelete: Restrict)
+  parent   StructureNode?  @relation("NodeTree", fields: [parentId, projectId], references: [id, projectId], onDelete: Restrict)
+  children StructureNode[] @relation("NodeTree")
+  unit     DwellingUnit?
+  lot      LotDetail?
+
+  @@unique([id, projectId])
+  @@index([projectId, moduleId, parentId, position])
+  @@index([projectId, path])
+  @@map("structure_node")
+}
+
+/// Detalhe 1:1 de nós DWELLING_UNIT: vínculo com a tipologia.
+model DwellingUnit {
+  structureNodeId String  @id @db.Uuid
+  projectId       String  @db.Uuid
+  typologyId      String? @db.Uuid
+
+  node     StructureNode     @relation(fields: [structureNodeId, projectId], references: [id, projectId], onDelete: Cascade)
+  typology DwellingTypology? @relation(fields: [typologyId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@unique([structureNodeId, projectId])
+  @@index([projectId, typologyId])
+  @@map("dwelling_unit")
+}
+
+/// Detalhe 1:1 de nós LOT: atributos tipados do lote (m², m).
+model LotDetail {
+  structureNodeId String   @id @db.Uuid
+  projectId       String   @db.Uuid
+  area            Decimal? @db.Decimal(14, 4)
+  frontage        Decimal? @db.Decimal(10, 3)
+
+  node StructureNode @relation(fields: [structureNodeId, projectId], references: [id, projectId], onDelete: Cascade)
+
+  @@unique([structureNodeId, projectId])
+  @@map("lot_detail")
+}
+
+/// Tipologia construtiva do empreendimento (revisões e elementos chegam na F3).
+model DwellingTypology {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @db.Uuid
+  projectId      String       @db.Uuid
+  code           String       @db.VarChar(20)
+  name           String       @db.VarChar(120)
+  kind           TypologyKind
+  description    String?      @db.VarChar(2000)
+  privateArea    Decimal?     @db.Decimal(12, 4)
+  archivedAt     DateTime?    @db.Timestamptz(3)
+  version        Int          @default(1)
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+
+  project Project        @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  units   DwellingUnit[]
+
+  @@unique([id, projectId])
+  @@unique([projectId, code])
+  @@map("dwelling_typology")
 }

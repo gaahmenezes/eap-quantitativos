@@ -12,6 +12,7 @@ import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
+import { StructureModule } from './modules/structure/structure.module.js';
 import { PrismaService } from './prisma/prisma.service.js';
 
 @Global()
@@ -49,6 +50,7 @@ export class AppModule implements NestModule {
         AuthModule,
         OrganizationsModule,
         ProjectsModule,
+        StructureModule,
       ],
       controllers: [HealthController],
       providers: [
