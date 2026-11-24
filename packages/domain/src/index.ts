@@ -26,3 +26,4 @@ export * from './io/csv.js';
 export * from './io/values.js';
 export * from './io/files.js';
 export * from './io/import-fields.js';
+export * from './sheet/index.js';
