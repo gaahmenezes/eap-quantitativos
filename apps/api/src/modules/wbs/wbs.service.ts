@@ -181,7 +181,9 @@ export class WbsService {
     }
     const existing = await tx.wbsNode.findMany({ where: { projectId } });
     const manualLinks = await tx.wbsNodeService.findMany({ where: { projectId, fromTemplate: false }, select: { wbsNodeId: true } });
-    const protectedIds = new Set(manualLinks.map((l) => l.wbsNodeId));
+    // Protegidos: serviços escolhidos à mão ou com medições ativas (nunca apagados pela regeneração).
+    const measured = await tx.measurement.findMany({ where: { projectId, archivedAt: null }, select: { wbsNodeId: true }, distinct: ['wbsNodeId'] });
+    const protectedIds = new Set([...manualLinks.map((l) => l.wbsNodeId), ...measured.map((m) => m.wbsNodeId)]);
     const diff = diffWbs(existing.map(toExisting), desired, { moduleIds: sels.map((s) => s.moduleId), protectedIds });
     const selections = [...input.selections].sort((a, b) => (a.moduleId < b.moduleId ? -1 : 1));
     const factsHash = stableHash(facts);
@@ -402,6 +404,8 @@ export class WbsService {
       if (!!cur.archivedAt === archived) throw conflict('NO_CHANGE', archived ? 'Nó já excluído.' : 'Nó já está ativo.');
       let items: number;
       if (archived) {
+        const measured = await tx.measurement.count({ where: { projectId, archivedAt: null, wbsNode: { OR: [{ id }, { path: { startsWith: `${cur.path}/` } }] } } });
+        if (measured) throw conflict('HAS_MEASUREMENTS', `Há ${measured} medição(ões) ativa(s) neste nó ou abaixo dele. Arquive as medições antes de excluir o nó.`);
         items = await tx.$executeRaw`UPDATE wbs_node SET "archivedAt" = now(), version = version + 1 WHERE "projectId" = ${projectId}::uuid AND "archivedAt" IS NULL AND (id = ${id}::uuid OR path LIKE ${`${cur.path}/%`})`;
       } else {
         if (cur.parentId && (await tx.wbsNode.findUniqueOrThrow({ where: { id: cur.parentId } })).archivedAt) throw conflict('PARENT_ARCHIVED', 'Restaure primeiro o nó superior.');
@@ -416,6 +420,7 @@ export class WbsService {
   async setServices(actor: Actor, projectId: string, id: string, serviceIds: string[]) {
     return this.prisma.$transaction(async (tx) => {
       await assertProjectEditable(tx, actor.organizationId, projectId);
+      await lock(tx, projectId);
       const n = await this.node(tx, projectId, id);
       if (n.archivedAt) throw conflict('NODE_ARCHIVED', 'Nó excluído.');
       if (n.nodeType !== 'ITEM') throw new AppError(422, 'NOT_ITEM', 'Nó não quantificável', 'Somente itens quantificáveis recebem serviços.');
@@ -425,6 +430,10 @@ export class WbsService {
       const cur = await tx.wbsNodeService.findMany({ where: { wbsNodeId: id } });
       const removed = cur.filter((c) => !wanted.includes(c.serviceId)).map((c) => c.serviceId);
       const added = wanted.filter((w) => !cur.some((c) => c.serviceId === w));
+      if (removed.length) {
+        const measured = await tx.measurement.count({ where: { wbsNodeId: id, serviceId: { in: removed }, archivedAt: null } });
+        if (measured) throw conflict('HAS_MEASUREMENTS', 'O serviço tem medições ativas neste item. Arquive as medições antes de desvinculá-lo.');
+      }
       if (removed.length) await tx.wbsNodeService.deleteMany({ where: { wbsNodeId: id, serviceId: { in: removed } } });
       if (added.length) await tx.wbsNodeService.createMany({ data: added.map((serviceId) => ({ wbsNodeId: id, projectId, organizationId: actor.organizationId, serviceId, fromTemplate: false })) });
       // uma alteração manual nos serviços torna os vínculos do item "do usuário" (protege na regeneração)
