@@ -1,3 +1,5 @@
+import { TemplatesPage } from './features/templates/templates-page';
+import { WbsPage } from './features/wbs/wbs-page';
 import { StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
@@ -58,7 +60,9 @@ createRoot(document.getElementById('root')!).render(
               <Route path="empreendimentos/:projectId/cadastro/assistente" element={<WizardPage />} />
               <Route path="empreendimentos/:projectId/infraestrutura" element={<InfrastructurePage />} />
               <Route path="empreendimentos/:projectId/construtivo" element={<ConstructivePage />} />
+              <Route path="empreendimentos/:projectId/eap" element={<WbsPage />} />
               <Route path="servicos" element={<LibraryPage />} />
+              <Route path="templates" element={<TemplatesPage />} />
               <Route path="administracao" element={<AdminPage />} />
               <Route path="administracao/catalogo" element={<CatalogPage />} />
               <Route path="*" element={<EmptyState title="Página não encontrada">Verifique o endereço ou use o menu lateral.</EmptyState>} />

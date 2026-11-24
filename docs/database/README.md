@@ -56,3 +56,13 @@ A declividade e as profundidades dos trechos não são armazenadas: são derivad
 | `unit_of_measure` | Unidade da organização: símbolo, nome, expoentes `dimL/dimM/dimT/dimN`, fator `NUMERIC(40,30)` para a base, casas decimais | `UNIQUE(organizationId, symbol)`; fator > 0; expoentes em [-4, 4]; dimensão e fator imutáveis quando usada (trigger) — ADR-014 |
 | `service_category` | Árvore de categorias da biblioteca | `UNIQUE(organizationId, code)`; pai na mesma organização (FK composta); sem auto-referência |
 | `service` | Serviço técnico: código, descrição (e descrição normalizada), categoria, unidade, critério de medição, descrição técnica, origem, `derivedFromId` | código único no catálogo (`projectId IS NULL`) e por empreendimento (índices parciais); índice GIN `pg_trgm` na descrição normalizada; FKs compostas por organização; **nenhum campo financeiro** |
+
+## Tabelas (F5 — templates e EAP)
+| Tabela | Finalidade | Restrições relevantes |
+|---|---|---|
+| `wbs_template` | Template de EAP da organização: código, nome, tipos de módulo a que se aplica | `UNIQUE(organizationId, code)`; arquivamento em vez de exclusão |
+| `wbs_template_version` | Versão numerada (`DRAFT`/`PUBLISHED`) | `UNIQUE(templateId, number)`; um único rascunho por template (índice parcial); `publishedAt` obrigatório quando publicada; **versão publicada imutável** (trigger) — ADR-015 |
+| `wbs_template_node` | Nó do template: `stableKey`, título com variáveis, tipo, condição, repetição, serviços sugeridos | `UNIQUE(versionId, stableKey)`; pai na mesma versão (FK composta); inclusão/alteração/exclusão bloqueadas em versão publicada (trigger) |
+| `wbs_node` | Nó da EAP do empreendimento (independente do cadastro físico; vínculo opcional por `bindingKind/bindingId`) | pai no mesmo empreendimento (FK composta); `generationKey` única por empreendimento (índice parcial) e presente só em nós `GENERATED` (CHECK); posição ≥ 1; sem auto-referência; caminho materializado e código derivado |
+| `wbs_node_service` | Serviços vinculados a um item da EAP; `fromTemplate` distingue sugestão do template de escolha manual | PK `(wbsNodeId, serviceId)`; serviço da mesma organização (FK composta) |
+| `wbs_generation_run` | Registro de cada geração aplicada: seleções (módulo → versão), hash dos fatos e do resultado, resumo do diff | por empreendimento (FK composta); somente inclusão |

@@ -18,3 +18,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [012](012-catalogo-tecnico-por-organizacao.md) | Catálogo técnico por organização, copiado de um padrão | Aceita |
 | [013](013-revisoes-de-tipologia-e-propagacao.md) | Revisões de tipologia, unidade fixada e propagação explícita | Aceita |
 | [014](014-unidades-e-biblioteca-de-servicos.md) | Unidades com dimensão e fator exato; biblioteca de serviços em dois escopos | Aceita |
+| [015](015-templates-e-geracao-de-eap.md) | Templates de EAP versionados e geração determinística por diff | Aceita |

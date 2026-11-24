@@ -33,7 +33,13 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F4 | Duplicação com origem registrada; arquivamento auditado | Concluída | `library.test.ts` |
 | F4 | Unidade dos atributos do catálogo técnico validada contra o cadastro de unidades | Concluída | `library.test.ts`; seletor no catálogo técnico |
 | F4 | Fórmulas compatíveis por serviço | Planejada | F6 (motor de fórmulas) |
-| F5–F10 | Demais fases | Planejada | ver plano, seção 10 |
+| F5 | Linguagem de condições segura (parser próprio, sem eval) | Concluída | `parser.test.ts` (expressões maliciosas e inválidas rejeitadas) |
+| F5 | Templates de EAP versionados: rascunho, publicação imutável, nova versão, descarte, comparação, arquivamento | Concluída | `wbs.test.ts`; tela Templates de EAP; E2E |
+| F5 | Geração determinística (`generateWbs`) com repetições e condições; templates iniciais para os 5 tipos de módulo | Concluída | `wbs.test.ts` do domínio (hash idêntico, cenários A–D), `apps/api/test/wbs.test.ts` |
+| F5 | Regeneração por diff com prévia obrigatória e `planHash`; só nós novos ao incluir torre; nós protegidos ficam obsoletos; manuais intocados | Concluída | `wbs.test.ts` (domínio e API), E2E |
+| F5 | Editor de EAP: árvore virtualizada, busca, editar título, mover, duplicar, nós manuais, arquivar/restaurar, serviços por item, indicador de preenchimento, histórico de gerações | Concluída | `apps/api/test/wbs.test.ts`, E2E, revisão visual desktop/390px |
+| F5 | Proteção de nós com medição na regeneração | Implementada | regra de proteção pronta; medições chegam na F6 |
+| F6–F10 | Demais fases | Planejada | ver plano, seção 10 |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 48 · `apps/api` (integração, Postgres real): 92 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 7
+- `packages/domain`: 72 · `apps/api` (integração, Postgres real): 104 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 8

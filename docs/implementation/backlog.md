@@ -1,11 +1,16 @@
 # Backlog técnico
 
-## Próximo (F5 — Templates e motor de EAP)
-- Modelos `WbsTemplate`, `WbsTemplateVersion` (rascunho/publicada imutável) e `WbsTemplateNode` (título com variáveis, tipo agrupador/quantificável, condição, repetição sobre torres/pavimentos/tipologias/quadras/redes…, formato de código, serviços sugeridos).
-- Linguagem de condições segura sobre os fatos do empreendimento (mesmo parser das fórmulas, sem eval).
-- `generateWbs` e `diffWbs` puros e determinísticos em `packages/domain`; prévia de geração/regeneração; nós com medição nunca apagados; nós manuais intocados.
-- Editor de EAP (árvore, mover, reordenar, duplicar, exclusão controlada, indicadores de preenchimento) e `WbsGenerationRun`.
-- Templates iniciais para os 5 tipos de módulo; aceite com os cenários A–D.
+## Próximo (F6 — Motor de quantitativos e memórias)
+- Fórmulas versionadas (`Formula`/`FormulaVersion`/`FormulaVariable`) com análise dimensional sobre as unidades da F4.
+- `Measurement` (nó da EAP × serviço × âncora física exclusiva) e `MeasurementRevision` append-only como memória de cálculo; documentos de origem.
+- Medições de tipologia replicadas por unidade + particularidades REPLACE/ADD; disjunção de âncoras (sem dupla contagem).
+- Nós da EAP com medições passam a ser protegidos na regeneração (marcados como obsoletos, nunca apagados).
+- Fórmulas compatíveis por serviço; recálculo explícito ao publicar nova versão de fórmula.
+
+## Decisões da F5 a validar com o usuário
+- Templates iniciais (vertical, horizontal, loteamento, áreas comuns, infraestrutura) e seus serviços sugeridos são exemplos editáveis — ajuste ao padrão de EAP da empresa.
+- Na tela da EAP, apenas módulos e o primeiro nível ficam abertos por padrão; o restante abre sob demanda ou pela busca.
+- A chave estável dos nós de template não é editável (alterá-la equivaleria a remover e recriar os nós gerados).
 
 ## Decisões da F4 a validar com o usuário
 - Unidades e serviços iniciais (exemplo editável); "verba" não foi incluída por ter conotação financeira — use "cj" (conjunto) ou "un".
