@@ -66,3 +66,13 @@ A declividade e as profundidades dos trechos não são armazenadas: são derivad
 | `wbs_node` | Nó da EAP do empreendimento (independente do cadastro físico; vínculo opcional por `bindingKind/bindingId`) | pai no mesmo empreendimento (FK composta); `generationKey` única por empreendimento (índice parcial) e presente só em nós `GENERATED` (CHECK); posição ≥ 1; sem auto-referência; caminho materializado e código derivado |
 | `wbs_node_service` | Serviços vinculados a um item da EAP; `fromTemplate` distingue sugestão do template de escolha manual | PK `(wbsNodeId, serviceId)`; serviço da mesma organização (FK composta) |
 | `wbs_generation_run` | Registro de cada geração aplicada: seleções (módulo → versão), hash dos fatos e do resultado, resumo do diff | por empreendimento (FK composta); somente inclusão |
+
+## Tabelas (F6 — fórmulas, medições e memórias)
+| Tabela | Finalidade | Restrições relevantes |
+|---|---|---|
+| `formula` | Fórmula da organização: código, nome, descrição | `UNIQUE(organizationId, code)`; arquivamento |
+| `formula_version` | Versão numerada: expressão, variáveis (JSONB validado pelo domínio), grandeza do resultado | `UNIQUE(formulaId, number)`; um rascunho por fórmula (índice parcial); `publishedAt` ⇔ publicada; **versão publicada imutável e não apagável** (trigger) — ADR-016 |
+| `measurement` | Item da EAP × serviço × uma âncora; quantidade vigente | FKs compostas por empreendimento para item, âncoras e unidade, e por organização para o serviço; **exatamente uma âncora coerente com `anchorKind`** (CHECK); item, serviço e âncora imutáveis e exclusão física proibida (trigger) |
+| `measurement_revision` | Memória de cálculo: método, versão da fórmula, entradas, memória (JSONB), quantidade `NUMERIC(28,10)`, unidade, documento de origem, motivo | `UNIQUE(measurementId, number)`; método FORMULA ⇔ versão informada; motivo obrigatório a partir da R2; só versão **publicada** de fórmula (trigger); **somente inclusão** (trigger) |
+
+Também foram acrescentados `UNIQUE(id, projectId)` em `network_node`, `network_segment` e `physical_element` para as FKs compostas das âncoras.

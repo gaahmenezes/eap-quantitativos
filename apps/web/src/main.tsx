@@ -1,3 +1,6 @@
+import { FormulasPage } from './features/measurements/formulas-page';
+import { MemoriesPage } from './features/measurements/memories-page';
+import { QuantitiesPage } from './features/measurements/quantities-page';
 import { TemplatesPage } from './features/templates/templates-page';
 import { WbsPage } from './features/wbs/wbs-page';
 import { StrictMode, type ReactNode } from 'react';
@@ -63,6 +66,9 @@ createRoot(document.getElementById('root')!).render(
               <Route path="empreendimentos/:projectId/eap" element={<WbsPage />} />
               <Route path="servicos" element={<LibraryPage />} />
               <Route path="templates" element={<TemplatesPage />} />
+              <Route path="formulas" element={<FormulasPage />} />
+              <Route path="empreendimentos/:projectId/quantitativos" element={<QuantitiesPage />} />
+              <Route path="empreendimentos/:projectId/memorias" element={<MemoriesPage />} />
               <Route path="administracao" element={<AdminPage />} />
               <Route path="administracao/catalogo" element={<CatalogPage />} />
               <Route path="*" element={<EmptyState title="Página não encontrada">Verifique o endereço ou use o menu lateral.</EmptyState>} />

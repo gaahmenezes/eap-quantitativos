@@ -1,11 +1,16 @@
 # Backlog técnico
 
-## Próximo (F6 — Motor de quantitativos e memórias)
-- Fórmulas versionadas (`Formula`/`FormulaVersion`/`FormulaVariable`) com análise dimensional sobre as unidades da F4.
-- `Measurement` (nó da EAP × serviço × âncora física exclusiva) e `MeasurementRevision` append-only como memória de cálculo; documentos de origem.
-- Medições de tipologia replicadas por unidade + particularidades REPLACE/ADD; disjunção de âncoras (sem dupla contagem).
-- Nós da EAP com medições passam a ser protegidos na regeneração (marcados como obsoletos, nunca apagados).
-- Fórmulas compatíveis por serviço; recálculo explícito ao publicar nova versão de fórmula.
+## Próximo (F7 — Consolidação)
+- Serviço de consolidação em SQL a partir das linhas efetivas (replicação por tipologia aplicada) + implementação de referência em `packages/domain` e testes de equivalência.
+- Dimensões: item/nível da EAP, serviço, categoria, módulo, torre/pavimento/quadra/lote, tipologia, sistema/rede; filtros e drill-down até a memória de cálculo.
+- Conversão para a unidade do serviço quando a unidade de uma revisão antiga diferir da atual.
+- Desempenho (RNF06): ≥ 200.000 linhas efetivas em < 2 s.
+
+## Decisões da F6 a validar com o usuário
+- Contagem (un, pç) é tratada como adimensional nas fórmulas; constantes com unidade (ex.: folga de 0,10 m) devem ser declaradas como variável.
+- Medição de tipologia é ligada ao elemento pela chave estável (vale para todas as revisões que contêm o elemento); medição própria de uma unidade substitui a da tipologia.
+- Disjunção vale por item da EAP × serviço; o mesmo serviço pode ser medido em itens diferentes da EAP.
+- Fórmulas iniciais são exemplos editáveis.
 
 ## Decisões da F5 a validar com o usuário
 - Templates iniciais (vertical, horizontal, loteamento, áreas comuns, infraestrutura) e seus serviços sugeridos são exemplos editáveis — ajuste ao padrão de EAP da empresa.

@@ -19,3 +19,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [013](013-revisoes-de-tipologia-e-propagacao.md) | Revisões de tipologia, unidade fixada e propagação explícita | Aceita |
 | [014](014-unidades-e-biblioteca-de-servicos.md) | Unidades com dimensão e fator exato; biblioteca de serviços em dois escopos | Aceita |
 | [015](015-templates-e-geracao-de-eap.md) | Templates de EAP versionados e geração determinística por diff | Aceita |
+| [016](016-medicoes-e-memoria-de-calculo.md) | Medições com âncora única, memória de cálculo append-only e disjunção por cobertura | Aceita |
