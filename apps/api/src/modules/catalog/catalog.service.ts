@@ -13,6 +13,7 @@ import { AppError, conflict, notFound, versionConflict } from '../../common/erro
 import { PrismaService, type Tx } from '../../prisma/prisma.service.js';
 import { Prisma, type ElementAttributeDefinition } from '../../generated/prisma/client.js';
 import { AuditService } from '../audit/audit.service.js';
+import { LibraryService } from '../library/library.service.js';
 
 const defDto = (d: ElementAttributeDefinition) => ({
   key: d.key,
@@ -62,6 +63,7 @@ export class CatalogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly library: LibraryService,
   ) {}
 
   /** Copia o catálogo padrão para a organização (idempotente). */
@@ -148,6 +150,7 @@ export class CatalogService {
     this.validateDefs(input.attributes);
     return this.prisma.$transaction(async (tx) => {
       await this.checkSystemForType(tx, actor.organizationId, input.domain, input.category, input.systemTypeId);
+      await this.library.assertUnitSymbols(tx, actor.organizationId, input.attributes.map((a) => (a.dataType === 'NUMBER' ? (a.unit ?? '') : '')));
       const dup = await tx.elementType.findUnique({ where: { organizationId_code: { organizationId: actor.organizationId, code: input.code } } });
       if (dup) throw conflict('CODE_IN_USE', `Já existe um tipo de elemento com o código ${input.code}.`);
       const t = await tx.elementType.create({
@@ -197,6 +200,7 @@ export class CatalogService {
       if (!cur) throw notFound('Tipo de elemento');
       if (cur.version !== version) throw versionConflict();
       if (input.attributes) {
+        await this.library.assertUnitSymbols(tx, actor.organizationId, input.attributes.map((a) => (a.dataType === 'NUMBER' ? (a.unit ?? '') : '')));
         const used = await this.usageCount(tx, id);
         if (used > 0) {
           const next = new Map(input.attributes.map((a) => [a.key, a]));

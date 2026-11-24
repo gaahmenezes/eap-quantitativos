@@ -7,3 +7,6 @@ export * from './catalog/attributes.js';
 export * from './catalog/defaults.js';
 export * from './infra/segment.js';
 export * from './typology/resolution.js';
+export * from './units/units.js';
+export * from './services/normalize.js';
+export * from './services/defaults.js';

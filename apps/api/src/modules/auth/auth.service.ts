@@ -9,6 +9,7 @@ import { sha256 } from '../../common/auth/tokens.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CatalogService } from '../catalog/catalog.service.js';
+import { LibraryService } from '../library/library.service.js';
 import { burnVerify, hashPassword, verifyPassword } from './password.js';
 
 const MAX_FAILED = 10;
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly sessions: SessionService,
     private readonly audit: AuditService,
     private readonly catalog: CatalogService,
+    private readonly library: LibraryService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -46,6 +48,7 @@ export class AuthService {
       });
       await tx.membership.create({ data: { organizationId: org.id, userId: user.id, role: 'OWNER' } });
       await this.catalog.ensureDefaults(tx, org.id);
+      await this.library.ensureLibrary(tx, org.id);
       const actor = { userId: user.id, organizationId: org.id, requestId: meta.requestId };
       await this.audit.record(tx, actor, {
         entityType: 'Organization',
@@ -54,7 +57,7 @@ export class AuthService {
         after: { name: org.name, owner: { id: user.id, email: user.email } },
       });
       return { user, org };
-    });
+    }, { timeout: 30_000 });
     return this.sessions.create(user.id, org.id, meta);
   }
 

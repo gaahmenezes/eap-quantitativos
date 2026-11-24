@@ -45,12 +45,15 @@ model Organization {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  memberships  Membership[]
-  invitations  Invitation[]
-  projects     Project[]
-  auditLogs    AuditLog[]
-  systemTypes  InfrastructureSystemType[]
-  elementTypes ElementType[]
+  memberships       Membership[]
+  invitations       Invitation[]
+  projects          Project[]
+  auditLogs         AuditLog[]
+  systemTypes       InfrastructureSystemType[]
+  elementTypes      ElementType[]
+  unitOfMeasures    UnitOfMeasure[]
+  serviceCategories ServiceCategory[]
+  services          Service[]
 
   @@map("organization")
 }
@@ -149,6 +152,7 @@ model Project {
   nodes        StructureNode[]
   typologies   DwellingTypology[]
   systems      InfrastructureSystem[]
+  services     Service[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, code])
@@ -650,4 +654,93 @@ model UnitOverride {
 
   @@index([projectId, unitId])
   @@map("unit_override")
+}
+
+// ===================== F4 — Unidades de medida e biblioteca de serviços =====================
+
+enum ServiceOrigin {
+  CATALOG
+  PROJECT
+  DUPLICATE
+  IMPORT
+}
+
+/// Unidade de medida da organização com dimensão [L, M, T, N] e fator exato para a base.
+/// Dimensão e fator são imutáveis depois que a unidade é usada (trigger).
+model UnitOfMeasure {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  symbol         String    @db.VarChar(12)
+  name           String    @db.VarChar(60)
+  dimL           Int       @db.SmallInt
+  dimM           Int       @db.SmallInt
+  dimT           Int       @db.SmallInt
+  dimN           Int       @db.SmallInt
+  factor         Decimal   @db.Decimal(40, 30)
+  decimals       Int       @db.SmallInt
+  system         Boolean   @default(false)
+  archivedAt     DateTime? @db.Timestamptz(3)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  services     Service[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, symbol])
+  @@map("unit_of_measure")
+}
+
+/// Categoria (árvore) da biblioteca de serviços da organização.
+model ServiceCategory {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  parentId       String?   @db.Uuid
+  code           String    @db.VarChar(30)
+  name           String    @db.VarChar(120)
+  position       Int
+  archivedAt     DateTime? @db.Timestamptz(3)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  parent       ServiceCategory?  @relation("CategoryTree", fields: [parentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  children     ServiceCategory[] @relation("CategoryTree")
+  services     Service[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@map("service_category")
+}
+
+/// Serviço técnico quantificável. projectId nulo = catálogo da organização; preenchido = específico do empreendimento.
+/// Sem nenhum campo financeiro (regra 1).
+model Service {
+  id                    String        @id @default(uuid(7)) @db.Uuid
+  organizationId        String        @db.Uuid
+  projectId             String?       @db.Uuid
+  code                  String        @db.VarChar(30)
+  description           String        @db.VarChar(300)
+  normalizedDescription String        @db.VarChar(300)
+  categoryId            String        @db.Uuid
+  unitId                String        @db.Uuid
+  measurementCriterion  String?       @db.VarChar(2000)
+  technicalDescription  String?       @db.VarChar(4000)
+  origin                ServiceOrigin
+  derivedFromId         String?       @db.Uuid
+  archivedAt            DateTime?     @db.Timestamptz(3)
+  version               Int           @default(1)
+  createdAt             DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime      @updatedAt @db.Timestamptz(3)
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  project      Project?        @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  category     ServiceCategory @relation(fields: [categoryId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  unit         UnitOfMeasure   @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  derivedFrom  Service?        @relation("ServiceDerivation", fields: [derivedFromId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  derivatives  Service[]       @relation("ServiceDerivation")
+
+  @@unique([id, organizationId])
+  @@index([organizationId, projectId, categoryId])
+  @@map("service")
 }

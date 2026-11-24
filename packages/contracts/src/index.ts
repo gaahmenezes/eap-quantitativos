@@ -5,3 +5,4 @@ export * from './projects.js';
 export * from './structure.js';
 export * from './infra.js';
 export * from './typology.js';
+export * from './services.js';
