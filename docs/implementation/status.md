@@ -22,9 +22,13 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F2 | Árvore do cadastro: criar, editar, mover, reordenar, duplicar, arquivar/reativar | Concluída | `apps/api/test/structure.test.ts`; UI com árvore virtualizada e inspetor |
 | F2 | Lotes (área e testada decimais) | Concluída | `structure.test.ts` |
 | F2 | Tipologias (cadastro, contagem de unidades, arquivamento protegido) | Concluída | `structure.test.ts`, E2E |
-| F2 | Particularidades por unidade e revisões de tipologia | Planejada | F3 (estrutura) e F6 (quantitativos) |
-| F3 | Infraestrutura (redes, trechos, dispositivos) e construtivo (elementos de tipologia) | Planejada | — |
-| F4–F10 | Demais fases | Planejada | ver plano, seção 10 |
+| F2 | Particularidades por unidade e revisões de tipologia | Concluída na F3 | ver linhas F3 |
+| F3 | Catálogo técnico por organização (sistemas, tipos de elemento, atributos) | Concluída | `infra.test.ts`; tela Administração › Catálogo técnico |
+| F3 | Infraestrutura: sistemas, redes, dispositivos, trechos com declividade/profundidade derivadas | Concluída | `segment.test.ts` (valores conhecidos), `infra.test.ts` (cenário C), E2E de drenagem |
+| F3 | Elementos físicos de sistemas sem rede e de áreas comuns | Concluída | `infra.test.ts`; inspetor do cadastro |
+| F3 | Revisões de tipologia imutáveis, propagação explícita, particularidades append-only | Concluída | `resolution.test.ts`, `constructive.test.ts` (cenário B), E2E construtivo |
+| F4 | Unidades de medida e biblioteca de serviços | Planejada | — |
+| F5–F10 | Demais fases | Planejada | ver plano, seção 10 |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 26 · `apps/api` (integração, Postgres real): 55 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 4
+- `packages/domain`: 38 · `apps/api` (integração, Postgres real): 76 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 6

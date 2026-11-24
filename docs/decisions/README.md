@@ -15,3 +15,5 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [009](009-snapshots-de-revisao.md) | Revisões como snapshots normalizados | Aceita |
 | [010](010-atributos-tecnicos.md) | Atributos técnicos: colunas tipadas + JSONB validado | Aceita |
 | [011](011-misto-por-modulos.md) | Empreendimento misto como composição de módulos | Aceita |
+| [012](012-catalogo-tecnico-por-organizacao.md) | Catálogo técnico por organização, copiado de um padrão | Aceita |
+| [013](013-revisoes-de-tipologia-e-propagacao.md) | Revisões de tipologia, unidade fixada e propagação explícita | Aceita |

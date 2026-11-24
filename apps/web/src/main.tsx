@@ -19,6 +19,9 @@ import { ProjectDetailPage } from './features/projects/project-detail';
 import { AdminPage } from './features/admin/admin-page';
 import { StructurePage } from './features/structure/structure-page';
 import { WizardPage } from './features/structure/wizard-page';
+import { InfrastructurePage } from './features/infrastructure/infrastructure-page';
+import { ConstructivePage } from './features/constructive/constructive-page';
+import { CatalogPage } from './features/catalog/catalog-page';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,7 +55,10 @@ createRoot(document.getElementById('root')!).render(
               <Route path="empreendimentos/:projectId" element={<ProjectDetailPage />} />
               <Route path="empreendimentos/:projectId/cadastro" element={<StructurePage />} />
               <Route path="empreendimentos/:projectId/cadastro/assistente" element={<WizardPage />} />
+              <Route path="empreendimentos/:projectId/infraestrutura" element={<InfrastructurePage />} />
+              <Route path="empreendimentos/:projectId/construtivo" element={<ConstructivePage />} />
               <Route path="administracao" element={<AdminPage />} />
+              <Route path="administracao/catalogo" element={<CatalogPage />} />
               <Route path="*" element={<EmptyState title="Página não encontrada">Verifique o endereço ou use o menu lateral.</EmptyState>} />
             </Route>
           </Routes>

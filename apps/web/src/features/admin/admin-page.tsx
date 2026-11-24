@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { InvitationDto, MemberDto } from '@eapq/contracts';
 import type { OrgRole } from '@eapq/domain';
@@ -53,7 +54,7 @@ export function AdminPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: 'Administração' }]} />
-      <PageHeader title="Administração">Membros e convites de {me?.organization.name}</PageHeader>
+      <PageHeader title="Administração" actions={<Link to="/administracao/catalogo" className="inline-flex h-9 items-center rounded-[3px] border border-line-strong bg-sheet px-3.5 text-[14px] font-medium hover:bg-cyan-wash">Catálogo técnico</Link>}>Membros e convites de {me?.organization.name}</PageHeader>
       {error && <div className="mb-4"><Notice tone="danger">{error}</Notice></div>}
 
       <section aria-labelledby="membros" className="mb-8 max-w-4xl">

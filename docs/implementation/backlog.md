@@ -1,11 +1,15 @@
 # Backlog técnico
 
-## Próximo (F3 — Infraestrutura e construtivo)
-- Catálogo `InfrastructureSystemType` por organização (extensível sem migração) e `InfrastructureSystem` no empreendimento.
-- Redes, dispositivos (PV, BL, caixas) e segmentos PV-a-PV com atributos tipados (comprimento, diâmetro, material, cotas, profundidades, declividade derivada) — ADR-010.
-- `ElementType` + definições de atributos; `PhysicalElement` validado contra o tipo.
-- Tipologias com revisões imutáveis (`TypologyRevision`) e elementos com `stableKey`; vínculo da unidade a uma revisão publicada; `UnitOverride` estrutural.
-- Aceite: cenário C com drenagem, água e esgoto por trechos; particularidade de unidade preservada após nova revisão da tipologia.
+## Próximo (F4 — Unidades de medida e biblioteca de serviços)
+- `UnitOfMeasure` com vetor dimensional e fator para a base (NUMERIC) em `packages/domain/src/units`; conversões testadas com valores conhecidos.
+- Ligar os atributos numéricos do catálogo (hoje com símbolo de unidade em texto) ao cadastro formal de unidades.
+- Categorias e serviços (padrão da organização e específicos do empreendimento), duplicação, aviso de descrição similar (pg_trgm), código único.
+- Sem preços, custos ou composições (regra 1).
+
+## Decisões da F3 a validar com o usuário
+- Catálogo padrão inicial (sistemas, dispositivos, trechos e elementos com atributos) — ajuste os nomes e atributos ao padrão da empresa.
+- Declividade calculada pelas cotas de fundo do trecho; na ausência delas, pelas cotas de fundo dos dispositivos.
+- Propagação de revisão de tipologia sempre manual, com confirmação para unidades com particularidades em conflito.
 
 ## Decisões da F2 a validar com o usuário
 - Numeração padrão de apartamentos: pavimento + final com 2 dígitos (Apto 101 … 1004). Térreo opcional, sem unidades.

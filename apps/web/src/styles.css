@@ -52,3 +52,10 @@ body {
     animation: none !important;
   }
 }
+
+/* Contêineres roláveis precisam ser posicionados: elementos absolutos (ex.: .sr-only em
+   cabeçalhos de tabela) não podem escapar e criar rolagem horizontal na página. */
+.overflow-x-auto,
+.overflow-auto {
+  position: relative;
+}

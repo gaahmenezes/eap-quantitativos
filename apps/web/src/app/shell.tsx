@@ -24,8 +24,8 @@ const GLOBAL: NavItem[] = [
 
 const PROJECT: NavItem[] = [
   { label: 'Cadastro físico', projectPath: 'cadastro' },
-  { label: 'Infraestrutura', phase: 3 },
-  { label: 'Construtivo', phase: 3 },
+  { label: 'Infraestrutura', projectPath: 'infraestrutura' },
+  { label: 'Construtivo', projectPath: 'construtivo' },
   { label: 'EAP', phase: 5 },
   { label: 'Quantitativos', phase: 6 },
   { label: 'Memórias de cálculo', phase: 6 },

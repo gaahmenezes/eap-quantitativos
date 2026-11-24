@@ -23,6 +23,7 @@ import { useProject } from '../projects/api';
 import { useStructure, useStructureMutations, useTypologies } from './api';
 import { ancestorsOf, indexStructure, isInSubtree, visibleRows, type TreeIndex, type TreeRow } from './tree-model';
 import { TypologiesTab } from './typologies-tab';
+import { NodeElements } from './node-elements';
 
 const SUMMARY_KINDS: NodeKindDto[] = ['PHASE', 'BLOCK_QUADRA', 'LOT', 'TOWER', 'FLOOR', 'DWELLING_UNIT', 'COMMON_AREA', 'STREET', 'STREET_SECTION'];
 
@@ -423,6 +424,10 @@ function NodeInspector({ projectId, row, idx, typologies, canEdit, onSelect }: {
               </form>
             </section>
           </>
+        )}
+        {n.kind !== 'DWELLING_UNIT' && <NodeElements projectId={projectId} node={n} canEdit={canEdit} />}
+        {n.kind === 'DWELLING_UNIT' && (
+          <p className="border-t border-line pt-4 text-[13px] text-muted">Os elementos desta unidade vêm da tipologia; particularidades são registradas em Construtivo.</p>
         )}
         {canEdit && (
           <section className="border-t border-line pt-4">
