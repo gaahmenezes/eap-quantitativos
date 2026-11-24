@@ -21,6 +21,7 @@ import { WbsTemplatesModule } from './modules/wbs-templates/wbs-templates.module
 import { WbsModule } from './modules/wbs/wbs.module.js';
 import { FormulasModule } from './modules/formulas/formulas.module.js';
 import { MeasurementsModule } from './modules/measurements/measurements.module.js';
+import { ConsolidationModule } from './modules/consolidation/consolidation.module.js';
 import { PrismaService } from './prisma/prisma.service.js';
 
 @Global()
@@ -67,6 +68,7 @@ export class AppModule implements NestModule {
         WbsModule,
         FormulasModule,
         MeasurementsModule,
+        ConsolidationModule,
       ],
       controllers: [HealthController],
       providers: [

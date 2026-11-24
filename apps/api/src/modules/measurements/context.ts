@@ -10,7 +10,7 @@ import { toOverrideInput, toRevisionElements } from '../constructive/constructiv
 
 export interface MeasurementCtx {
   nodes: Map<string, { id: string; path: string; name: string; code: string; kind: string; archivedAt: Date | null }>;
-  units: Map<string, { id: string; typologyId: string | null; path: string; label: string; elements: EffectiveElement[] | null }>;
+  units: Map<string, { id: string; typologyId: string | null; path: string; label: string; archived: boolean; elements: EffectiveElement[] | null }>;
   typologies: Map<string, { id: string; code: string; name: string }>;
   /** Rótulos de elementos de tipologia por chave (todas as revisões + inclusões por unidade). */
   elementLabels: Map<string, string>;
@@ -37,7 +37,7 @@ export async function loadContext(tx: Tx, projectId: string): Promise<Measuremen
     const n = nodeMap.get(u.structureNodeId)!;
     const elements = u.pinnedRevision ? resolveUnitElements(toRevisionElements(u.pinnedRevision.elements), u.overrides.map(toOverrideInput)).elements : null;
     for (const o of u.overrides) if (o.op === 'ADD_ELEMENT') elementLabels.set(`unit:${o.id}`, `${o.name} (só ${n.name})`);
-    unitMap.set(u.structureNodeId, { id: u.structureNodeId, typologyId: u.typologyId, path: n.path, label: `${n.code} ${n.name}`, elements });
+    unitMap.set(u.structureNodeId, { id: u.structureNodeId, typologyId: u.typologyId, path: n.path, label: `${n.code} ${n.name}`, archived: !!n.archivedAt, elements });
   }
   return {
     nodes: nodeMap,
@@ -80,8 +80,8 @@ export function coverageOf(m: AnchorFields, ctx: MeasurementCtx, replacements: R
     }
     case 'TYPOLOGY_ELEMENT': {
       const targets = m.dwellingUnitId
-        ? [ctx.units.get(m.dwellingUnitId)].filter((u) => !!u)
-        : [...ctx.units.values()].filter((u) => u.typologyId === m.typologyId && !replacements.has(typologyKey(m, u.id)));
+        ? [ctx.units.get(m.dwellingUnitId)].filter((u): u is NonNullable<typeof u> => !!u && !u.archived)
+        : [...ctx.units.values()].filter((u) => !u.archived && u.typologyId === m.typologyId && !replacements.has(typologyKey(m, u.id)));
       const out: string[] = [];
       for (const u of targets) {
         if (!u.elements) continue;
@@ -98,7 +98,8 @@ export function replacementKeys(ms: readonly AnchorFields[]): Set<string> {
 }
 
 export function expandUnits(ctx: MeasurementCtx): ExpandUnit[] {
-  return [...ctx.units.values()].map((u) => ({ id: u.id, typologyId: u.typologyId, elementKeys: u.elements ? new Set(u.elements.map((e) => e.stableKey)) : null }));
+  // unidades excluídas (arquivadas) do cadastro não entram na replicação
+  return [...ctx.units.values()].filter((u) => !u.archived).map((u) => ({ id: u.id, typologyId: u.typologyId, elementKeys: u.elements ? new Set(u.elements.map((e) => e.stableKey)) : null }));
 }
 
 export function anchorLabel(m: AnchorFields, ctx: MeasurementCtx): { label: string; archived: boolean } {

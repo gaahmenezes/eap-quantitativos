@@ -362,6 +362,12 @@ export class LibraryService {
       if (cur.version !== version) throw versionConflict();
       await this.checkRefs(tx, actor.organizationId, fields.categoryId, fields.unitId);
       if (fields.code && fields.code !== cur.code) await this.checkCode(tx, actor.organizationId, projectId, fields.code, id);
+      if (fields.unitId && fields.unitId !== cur.unitId) {
+        // Com medições, só unidade da mesma grandeza (a consolidação converte); outra grandeza invalidaria os quantitativos.
+        const [from, to] = await Promise.all([tx.unitOfMeasure.findUniqueOrThrow({ where: { id: cur.unitId } }), tx.unitOfMeasure.findUniqueOrThrow({ where: { id: fields.unitId } })]);
+        const same = from.dimL === to.dimL && from.dimM === to.dimM && from.dimT === to.dimT;
+        if (!same && (await tx.measurement.count({ where: { serviceId: id } }))) throw conflict('SERVICE_MEASURED', `O serviço já tem medições em ${from.symbol}; só é possível trocar por uma unidade da mesma grandeza.`);
+      }
       const data: Prisma.ServiceUncheckedUpdateManyInput = { version: { increment: 1 } };
       for (const k of ['code', 'categoryId', 'unitId'] as const) if (fields[k] !== undefined) data[k] = fields[k];
       if (fields.description !== undefined) { data.description = fields.description; data.normalizedDescription = normalizeDescription(fields.description); }

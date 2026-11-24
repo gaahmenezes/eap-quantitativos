@@ -8,3 +8,4 @@ export * from './typology.js';
 export * from './services.js';
 export * from './wbs.js';
 export * from './measurements.js';
+export * from './consolidation.js';

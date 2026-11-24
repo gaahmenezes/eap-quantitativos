@@ -20,3 +20,4 @@ export * from './formula/formula.js';
 export * from './measurement/coverage.js';
 export * from './measurement/expand.js';
 export * from './formula/defaults.js';
+export * from './consolidation/consolidate.js';

@@ -53,7 +53,7 @@ export function resolveUnitElements(revision: readonly RevisionElement[], overri
   }
   for (const o of overrides) {
     if (o.op !== 'ADD_ELEMENT') continue;
-    if (o.parentStableKey && (!byKey.has(o.parentStableKey) || excludedKeys.has(o.parentStableKey))) {
+    if (o.parentStableKey && (!byKey.has(o.parentStableKey) || isExcluded(byKey.get(o.parentStableKey)!))) {
       orphanOverrides.push({ overrideId: o.id, reason: 'O elemento superior da inclusão não existe ou foi excluído.' });
       continue;
     }
