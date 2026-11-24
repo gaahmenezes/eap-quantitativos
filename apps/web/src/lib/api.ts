@@ -1,4 +1,5 @@
 import type { ProblemDetails } from '@eapq/contracts';
+import { DEMO, demoLookup } from './demo';
 
 /** Erro HTTP tipado a partir do problem+json da API. */
 export class ApiError extends Error {
@@ -28,6 +29,7 @@ export async function api<T>(
   path: string,
   opts: { body?: unknown; version?: number; signal?: AbortSignal } = {},
 ): Promise<T> {
+  if (DEMO) return demoCall<T>(method, path, opts.body);
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
@@ -81,6 +83,7 @@ async function failure(res: Response): Promise<never> {
 
 /** Envio de arquivo (multipart) com CSRF. */
 export async function uploadFile<T>(path: string, file: File, fields: Record<string, string> = {}): Promise<T> {
+  if (DEMO) throw readOnly();
   const form = new FormData();
   for (const [k, v] of Object.entries(fields)) form.append(k, v);
   form.append('file', file);
@@ -91,6 +94,7 @@ export async function uploadFile<T>(path: string, file: File, fields: Record<str
 
 /** Baixa um arquivo gerado pela API (exportações) e oferece para salvar. */
 export async function downloadFile(method: 'GET' | 'POST', path: string, body?: unknown): Promise<void> {
+  if (DEMO) throw readOnly();
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
@@ -106,4 +110,21 @@ export async function downloadFile(method: 'GET' | 'POST', path: string, body?: 
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+const readOnly = () => new ApiError({ type: 'about:blank#DEMO', title: 'Demonstração', status: 403, code: 'DEMO_READ_ONLY', detail: 'Esta é uma demonstração somente leitura: alterações, envios e downloads não são feitos aqui.' });
+
+/** Demonstração: responde com a gravação; o que não foi gravado aparece como indisponível. */
+async function demoCall<T>(method: Method, path: string, body: unknown): Promise<T> {
+  await new Promise((r) => setTimeout(r, 120));
+  const rec = demoLookup(method, path, body !== undefined ? JSON.stringify(body) : undefined);
+  if (!rec) {
+    if (method !== 'GET' && !path.endsWith('/consolidation') && !path.endsWith('/consolidation/lines') && !path.endsWith('/preview')) throw readOnly();
+    throw new ApiError({ type: 'about:blank#DEMO', title: 'Demonstração', status: 404, code: 'DEMO_NOT_RECORDED', detail: 'Esta consulta não faz parte da demonstração gravada. Na aplicação real ela é calculada na hora.' });
+  }
+  if (rec.status >= 400) {
+    const p = (rec.body ?? {}) as Partial<ProblemDetails>;
+    throw new ApiError({ type: p.type ?? 'about:blank', title: p.title ?? 'Erro', status: rec.status, code: p.code ?? `HTTP_${rec.status}`, detail: p.detail ?? `Erro ${rec.status}`, errors: p.errors });
+  }
+  return (rec.status === 204 ? undefined : rec.body) as T;
 }

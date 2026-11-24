@@ -8,7 +8,8 @@ import { TemplatesPage } from './features/templates/templates-page';
 import { WbsPage } from './features/wbs/wbs-page';
 import { StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useLocation } from 'react-router';
+import { DEMO, demoMeta, loadSnapshot } from './lib/demo';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@fontsource/barlow/400.css';
 import '@fontsource/barlow/500.css';
@@ -49,11 +50,26 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return children;
 }
 
-createRoot(document.getElementById('root')!).render(
+// Demonstração: rotas em memória (o endereço da página hospedeira não muda) e faixa de aviso.
+const Router = DEMO ? MemoryRouter : BrowserRouter;
+
+function DemoBanner() {
+  if (!DEMO || !demoMeta) return null;
+  return (
+    <div role="note" className="sticky top-0 z-40 bg-signal px-4 py-1.5 text-center text-[13px] font-medium text-graphite-950">
+      Demonstração somente leitura · dados reais criados e gravados pela aplicação em {new Date(demoMeta.recordedAt).toLocaleDateString('pt-BR')} · alterações, envios e downloads ficam desativados
+    </div>
+  );
+}
+
+async function start() {
+  if (DEMO) await loadSnapshot();
+  createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <BrowserRouter>
+        <Router>
+          <DemoBanner />
           <Routes>
             <Route path="/entrar" element={<LoginPage />} />
             <Route path="/criar-conta" element={<SignupPage />} />
@@ -81,8 +97,11 @@ createRoot(document.getElementById('root')!).render(
               <Route path="*" element={<EmptyState title="Página não encontrada">Verifique o endereço ou use o menu lateral.</EmptyState>} />
             </Route>
           </Routes>
-        </BrowserRouter>
+        </Router>
       </SessionProvider>
     </QueryClientProvider>
   </StrictMode>,
 );
+}
+void start();
+

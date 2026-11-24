@@ -13,7 +13,14 @@ const FIELD: Record<string, string> = {
   serviceIds: 'Serviços', parentId: 'Nó superior', position: 'Posição', description: 'Descrição',
 };
 
-const show = (v: unknown): string => (v === null || v === undefined || v === '' ? '—' : Array.isArray(v) ? `${v.length} item(ns)` : typeof v === 'object' ? '…' : String(v));
+const VALUE: Record<string, string> = { MANUAL: 'Manual', FORMULA: 'Fórmula', IMPORTED: 'Importada', GROUP: 'Agrupador', ITEM: 'Item quantificável' };
+const show = (v: unknown): string => {
+  if (v === null || v === undefined || v === '') return '—';
+  if (Array.isArray(v)) return `${v.length} item(ns)`;
+  if (typeof v === 'object') return '…';
+  const s = String(v);
+  return VALUE[s] ?? (/^-?\d+\.\d+$/.test(s) ? s.replace('.', ',') : s);
+};
 
 function changes(e: AuditEntryDto) {
   const b = (e.before ?? {}) as Record<string, unknown>;
