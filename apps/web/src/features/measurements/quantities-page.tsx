@@ -15,6 +15,7 @@ import { useProject } from '../projects/api';
 import { mKeys, useMeasurement, useMeasurements, useOutdated, useSummary } from './api';
 import { MeasurementForm } from './measurement-form';
 import { MemoryView } from './memory-view';
+import { EntityHistory } from '../../components/entity-history';
 
 const ANCHOR_KIND: Record<string, string> = { STRUCTURE_NODE: 'Cadastro', TYPOLOGY_ELEMENT: 'Tipologia', NETWORK_SEGMENT: 'Trecho', NETWORK_NODE: 'Dispositivo', PHYSICAL_ELEMENT: 'Elemento' };
 
@@ -221,6 +222,7 @@ export function MeasurementDetail({ projectId, id, canEdit, onRevise }: { projec
           </article>
         ))}
       </section>
+      <EntityHistory projectId={projectId} entityId={m.id} />
     </div>
   );
 }

@@ -53,7 +53,13 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F7 | Desempenho: 200.000 linhas efetivas em < 2 s | Concluída | `consolidation-perf.test.ts` (~0,5–0,7 s medidos) |
 | F7 | Tela Consolidações: dimensões, filtros, totais por unidade, detalhamento até a memória | Concluída | E2E, revisão visual desktop/390px |
 | F7 | Troca de unidade de serviço medido só na mesma grandeza | Concluída | `consolidation.test.ts` |
-| F8–F10 | Demais fases | Planejada | ver plano, seção 10 |
+| F8 | Emissão de revisões (R00, R01…) com fotografia imutável de EAP, cadastro, medições, linhas efetivas e rótulos | Concluída | `revisions.test.ts` (triggers de imutabilidade e de gravação só na emissão) |
+| F8 | Alterar o empreendimento após a R00 não altera relatórios da R00 | Concluída | `revisions.test.ts`, E2E |
+| F8 | Comparação revisão × revisão e revisão × estado atual com deltas exatos | Concluída | `compare.test.ts` (domínio), `revisions.test.ts`, E2E |
+| F8 | Consolidação e detalhamento sobre a fotografia, até a memória de cálculo congelada | Concluída | `revisions.test.ts`, E2E |
+| F8 | Permissão de emissão (coordenador ou administrador) | Concluída | `revisions.test.ts` (editor recebe 403) |
+| F8 | Histórico por entidade (medições e nós da EAP) | Concluída | `revisions.test.ts` (filtro da auditoria), E2E |
+| F9–F10 | Demais fases | Planejada | ver plano, seção 10 |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 92 · `apps/api` (integração, Postgres real): 125 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 10
+- `packages/domain`: 94 · `apps/api` (integração, Postgres real): 130 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 11

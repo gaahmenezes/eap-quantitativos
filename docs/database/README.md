@@ -79,3 +79,12 @@ Também foram acrescentados `UNIQUE(id, projectId)` em `network_node`, `network_
 
 ## F7 — consolidação
 Sem tabelas novas. A consolidação é uma consulta (`apps/api/src/modules/consolidation/sql.ts`) sobre `measurement`, `measurement_revision`, `dwelling_unit`, `typology_element`, `unit_override`, `structure_node`, `wbs_node` e infraestrutura, em transação somente leitura (ADR-017). Usa o índice único `typology_element(revisionId, stableKey)` para verificar o elemento na revisão fixada de cada unidade.
+
+## Tabelas (F8 — revisões do empreendimento)
+| Tabela | Finalidade | Restrições relevantes |
+|---|---|---|
+| `project_revision` | Revisão emitida: número, código (R00…), título, observações, resumo, emitente | `UNIQUE(projectId, number)`; código coerente com o número (CHECK); **imutável e não apagável** (trigger) — ADR-018 |
+| `revision_wbs_node` / `revision_structure_node` | Nós da EAP e do cadastro como estavam | PK `(revisionId, id do nó)`; imutáveis; só gravados na transação da emissão |
+| `revision_measurement` | Medição congelada → `measurement_revision` vigente (memória), multiplicador e total efetivo | FK para a revisão de medição imutável; imutável |
+| `revision_line` | Linhas efetivas com as colunas de dimensão da consolidação | índice por revisão; imutável |
+| `revision_label` | Rótulo (código e nome) de cada entidade referenciada, na emissão | PK `(revisionId, entityId)`; imutável |

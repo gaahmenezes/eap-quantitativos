@@ -1,10 +1,15 @@
 # Backlog técnico
 
-## Próximo (F8 — Revisões e rastreabilidade)
-- Emissão de revisões do empreendimento (R00, R01…) que congelam EAP, cadastro e medições por referência a revisões imutáveis.
-- Relatórios e consolidações sobre uma revisão emitida (lidos do snapshot, não do estado atual).
-- Comparação entre revisões: inclusões, exclusões e alterações com delta de quantidade.
-- Histórico por entidade na interface.
+## Próximo (F9 — Importação e exportação)
+- Importação em etapas (arquivo → área de preparação → mapeamento → validação → prévia → confirmação → relatório) para serviços, cadastro físico e medições, em XLSX e CSV; nada gravado antes da confirmação.
+- Upload seguro: limite de tamanho, verificação de assinatura, nome aleatório, armazenamento fora da raiz pública, limites de linhas/zip bomb.
+- Exportações XLSX/CSV/PDF de cadastro, EAP, quantitativos, memórias, consolidações e revisões, com neutralização de injeção de fórmula (= + - @).
+- Documento de origem das medições como arquivo anexado (pendente da F6).
+
+## Decisões da F8 a validar com o usuário
+- Numeração começa em R00 e é sequencial; revisões não têm rascunho: emitir já congela.
+- Só coordenadores do empreendimento e administradores da organização emitem revisões.
+- A comparação de quantitativos é por item da EAP × serviço; detalhes por outras dimensões estão na consolidação sobre cada revisão.
 
 ## Decisões da F7 a validar com o usuário
 - Dimensões disponíveis e atalhos (por serviço, por item da EAP, por tipologia, por torre e pavimento, por quadra e lote, por sistema e rede).

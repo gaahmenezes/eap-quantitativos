@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import type { ConsolidationDimensionKey, ConsolidationFiltersInput, ConsolidationLinesDto, ConsolidationResultDto } from '@eapq/contracts';
+import type { ConsolidationDimensionKey, ConsolidationFiltersInput, ConsolidationLinesDto, ConsolidationResultDto, FrozenMeasurementDto } from '@eapq/contracts';
 import { CONSOLIDATION_DIMENSIONS, DIMENSION_LABELS } from '@eapq/domain';
 import { Breadcrumbs } from '../../app/shell';
 import { Button } from '../../components/ui/button';
@@ -12,6 +12,9 @@ import { api, errorMessage } from '../../lib/api';
 import { fmtQty } from '../../lib/format';
 import { useProject } from '../projects/api';
 import { MeasurementDetail } from '../measurements/quantities-page';
+import { MemoryView } from '../measurements/memory-view';
+import { useRevisions } from '../revisions/api';
+import { fmtDateTime } from '../../lib/format';
 
 type Dim = ConsolidationDimensionKey;
 type Row = ConsolidationResultDto['rows'][number];
@@ -26,11 +29,11 @@ const PRESETS: { label: string; groupBy: Dim[] }[] = [
 ];
 const key = (p: string) => ['project', p, 'measurements', 'consolidation'] as const;
 
-function useConsolidation(projectId: string, groupBy: Dim[], filters: ConsolidationFiltersInput, enabled = true) {
+function useConsolidation(projectId: string, groupBy: Dim[], filters: ConsolidationFiltersInput, revisionId: string | null, enabled = true) {
   return useQuery({
-    queryKey: [...key(projectId), groupBy, filters],
+    queryKey: [...key(projectId), revisionId ?? 'atual', groupBy, filters],
     enabled,
-    queryFn: () => api<ConsolidationResultDto>('POST', `/projects/${projectId}/consolidation`, { body: { groupBy, filters } }),
+    queryFn: () => api<ConsolidationResultDto>('POST', `/projects/${projectId}/consolidation`, { body: { groupBy, filters, ...(revisionId && { revisionId }) } }),
     placeholderData: keepPreviousData,
   });
 }
@@ -41,7 +44,11 @@ export function ConsolidationPage() {
   const [groupBy, setGroupBy] = useState<Dim[]>(['service']);
   const [filters, setFilters] = useState<ConsolidationFiltersInput>({});
   const [drill, setDrill] = useState<Row | null>(null);
-  const q = useConsolidation(projectId, groupBy, filters);
+  const [params, setParams] = useSearchParams();
+  const revisions = useRevisions(projectId);
+  const revisionId = params.get('base') || null;
+  const q = useConsolidation(projectId, groupBy, filters, revisionId);
+  const baseRev = revisions.data?.find((r) => r.id === revisionId);
   if (project.isPending) return <Loading />;
   if (project.isError) return <ErrorState message={errorMessage(project.error)} onRetry={() => project.refetch()} />;
   const p = project.data;
@@ -59,6 +66,13 @@ export function ConsolidationPage() {
       </div>
 
       <section aria-label="Configuração" className="mb-4 flex flex-col gap-3 border border-line bg-sheet p-3">
+        <div className="max-w-sm">
+          <SelectField label="Base" value={revisionId ?? ''} onChange={(e) => { setParams(e.target.value ? { base: e.target.value } : {}, { replace: true }); setFilters({}); }}
+            hint={baseRev ? `Fotografia emitida em ${fmtDateTime(baseRev.issuedAt)}; não muda com alterações posteriores.` : 'Medições vigentes agora.'}>
+            <option value="">Estado atual</option>
+            {(revisions.data ?? []).map((r) => <option key={r.id} value={r.id}>{r.code} — {r.title}</option>)}
+          </SelectField>
+        </div>
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((x) => (
             <Button key={x.label} variant={JSON.stringify(x.groupBy) === JSON.stringify(groupBy) ? 'primary' : 'secondary'} onClick={() => setGroupBy(x.groupBy)}>{x.label}</Button>
@@ -72,7 +86,7 @@ export function ConsolidationPage() {
             </SelectField>
           ))}
         </div>
-        <FilterEditor projectId={p.id} filters={filters} onChange={setFilters} />
+        <FilterEditor projectId={p.id} revisionId={revisionId} filters={filters} onChange={setFilters} />
         {activeFilters.length > 0 && (
           <p className="flex flex-wrap items-center gap-2 text-[13px]">
             <span className="text-muted">Filtros:</span>
@@ -93,7 +107,7 @@ export function ConsolidationPage() {
         <ResultTable result={q.data} onDrill={setDrill} />
       )}
       <SidePanel open={!!drill} title="Detalhamento" onClose={() => setDrill(null)}>
-        {drill && q.data && <Drill projectId={p.id} row={drill} groupBy={q.data.groupBy} filters={filters} />}
+        {drill && q.data && <Drill projectId={p.id} revisionId={revisionId} row={drill} groupBy={q.data.groupBy} filters={filters} />}
       </SidePanel>
     </>
   );
@@ -152,9 +166,9 @@ function ResultTable({ result: r, onDrill }: { result: ConsolidationResultDto; o
   );
 }
 
-function FilterEditor({ projectId, filters, onChange }: { projectId: string; filters: ConsolidationFiltersInput; onChange: (f: ConsolidationFiltersInput) => void }) {
+function FilterEditor({ projectId, revisionId, filters, onChange }: { projectId: string; revisionId: string | null; filters: ConsolidationFiltersInput; onChange: (f: ConsolidationFiltersInput) => void }) {
   const [dim, setDim] = useState<Dim | ''>('');
-  const opts = useConsolidation(projectId, dim ? [dim] : [], {}, !!dim);
+  const opts = useConsolidation(projectId, dim ? [dim] : [], {}, revisionId, !!dim);
   const selected = new Set(dim ? filters[dim] ?? [] : []);
   const toggle = (v: string) => {
     if (!dim) return;
@@ -184,15 +198,15 @@ function FilterEditor({ projectId, filters, onChange }: { projectId: string; fil
   );
 }
 
-function Drill({ projectId, row, groupBy, filters }: { projectId: string; row: Row; groupBy: Dim[]; filters: ConsolidationFiltersInput }) {
+function Drill({ projectId, revisionId, row, groupBy, filters }: { projectId: string; revisionId: string | null; row: Row; groupBy: Dim[]; filters: ConsolidationFiltersInput }) {
   const [open, setOpen] = useState<string | null>(null);
   const f: ConsolidationFiltersInput = { ...filters };
   for (const d of groupBy) f[d] = [row.key[d]?.id ?? 'none'];
-  const q = useQuery({ queryKey: [...key(projectId), 'lines', f], queryFn: () => api<ConsolidationLinesDto>('POST', `/projects/${projectId}/consolidation/lines`, { body: { filters: f, limit: 200 } }) });
+  const q = useQuery({ queryKey: [...key(projectId), revisionId ?? 'atual', 'lines', f], queryFn: () => api<ConsolidationLinesDto>('POST', `/projects/${projectId}/consolidation/lines`, { body: { filters: f, limit: 200, ...(revisionId && { revisionId }) } }) });
   if (open) return (
     <div className="flex flex-col gap-3">
       <div><Button variant="ghost" onClick={() => setOpen(null)}>← Voltar ao detalhamento</Button></div>
-      <MeasurementDetail projectId={projectId} id={open} canEdit={false} onRevise={() => undefined} />
+      {revisionId ? <FrozenView projectId={projectId} revisionId={revisionId} measurementId={open} /> : <MeasurementDetail projectId={projectId} id={open} canEdit={false} onRevise={() => undefined} />}
     </div>
   );
   return (
@@ -219,6 +233,30 @@ function Drill({ projectId, row, groupBy, filters }: { projectId: string; row: R
           </ul>
         </>
       )}
+    </div>
+  );
+}
+
+function FrozenView({ projectId, revisionId, measurementId }: { projectId: string; revisionId: string; measurementId: string }) {
+  const q = useQuery({ queryKey: ['project', projectId, 'revisions', revisionId, 'measurement', measurementId], queryFn: () => api<FrozenMeasurementDto>('GET', `/projects/${projectId}/revisions/${revisionId}/measurements/${measurementId}`) });
+  if (q.isPending) return <Loading />;
+  if (q.isError) return <ErrorState message={errorMessage(q.error)} />;
+  const m = q.data;
+  const r = m.revision;
+  return (
+    <div className="flex flex-col gap-3 text-[13.5px]">
+      <Notice tone="info">Medição como estava na {m.revisionCode}.</Notice>
+      <div>
+        <p className="text-muted">{m.wbsCode} {m.wbsTitle} · <span className="font-mono">{m.serviceCode}</span></p>
+        <p className="font-medium">{m.anchorLabel}</p>
+        <p className="font-mono text-[17px]">{fmtQty(r.quantity)} {r.unit}{m.multiplier > 1 && <span className="text-[14px] text-muted"> × {m.multiplier} un. = {fmtQty(m.effectiveTotal)} {r.unit}</span>}</p>
+      </div>
+      <section aria-label="Memória de cálculo" className="border border-line p-3">
+        <header className="mb-2 flex flex-wrap justify-between gap-2"><span className="font-mono">R{r.number} da medição</span><span className="text-[12px] text-muted">{r.createdBy} · {fmtDateTime(r.createdAt)}</span></header>
+        {r.reason && <p className="mb-1"><span className="text-muted">Motivo:</span> {r.reason}</p>}
+        {r.sourceReference && <p className="mb-1"><span className="text-muted">Documento de origem:</span> {r.sourceReference}</p>}
+        <MemoryView memory={r.memory} />
+      </section>
     </div>
   );
 }

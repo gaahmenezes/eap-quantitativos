@@ -14,6 +14,7 @@ import { api, ApiError, errorMessage } from '../../lib/api';
 import { fmtDateTime } from '../../lib/format';
 import { useSession } from '../auth/session';
 import { useProject } from '../projects/api';
+import { EntityHistory } from '../../components/entity-history';
 import { useStructure } from '../structure/api';
 
 const wbsKey = (id: string) => ['project', id, 'wbs'] as const;
@@ -327,6 +328,7 @@ function Inspector({ projectId, node: n, parent, canEdit, onSelect }: { projectI
         </div>
       )}
       {canEdit && n.archivedAt && <div><Button onClick={() => act.run(() => api('POST', `${base}/unarchive`, { body: {}, version: n.version }))}>Restaurar</Button></div>}
+      <EntityHistory projectId={projectId} entityId={n.id} />
       <SidePanel open={adding} title={`Incluir subnó em ${n.code}`} onClose={() => setAdding(false)}>
         {adding && <NewNodeForm projectId={projectId} parentId={n.id} onDone={(id) => { setAdding(false); if (id) onSelect(id); }} />}
       </SidePanel>

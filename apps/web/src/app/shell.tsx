@@ -31,7 +31,7 @@ const PROJECT: NavItem[] = [
   { label: 'Quantitativos', projectPath: 'quantitativos' },
   { label: 'Memórias de cálculo', projectPath: 'memorias' },
   { label: 'Consolidações', projectPath: 'consolidacoes' },
-  { label: 'Revisões', phase: 8 },
+  { label: 'Revisões', projectPath: 'revisoes' },
 ];
 
 function Item({ item: raw, projectId }: { item: NavItem; projectId?: string }) {

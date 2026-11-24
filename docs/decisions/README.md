@@ -21,3 +21,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [015](015-templates-e-geracao-de-eap.md) | Templates de EAP versionados e geração determinística por diff | Aceita |
 | [016](016-medicoes-e-memoria-de-calculo.md) | Medições com âncora única, memória de cálculo append-only e disjunção por cobertura | Aceita |
 | [017](017-consolidacao-sql-com-referencia.md) | Consolidação em SQL validada por uma implementação de referência no domínio | Aceita |
+| [018](018-revisoes-como-fotografias.md) | Revisões do empreendimento como fotografias imutáveis | Aceita |
