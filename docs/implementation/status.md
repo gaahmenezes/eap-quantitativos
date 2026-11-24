@@ -47,7 +47,13 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F6 | Fórmula nova não recalcula; lista de desatualizadas e recálculo explícito | Concluída | `measurements.test.ts`, E2E |
 | F6 | Telas Quantitativos e Memórias de cálculo | Concluída | E2E, revisão visual desktop/390px |
 | F6 | Documento de origem como arquivo anexado | Planejada | hoje é referência textual; upload na F9 |
-| F7–F10 | Demais fases | Planejada | ver plano, seção 10 |
+| F7 | Consolidação de referência no domínio (somas exatas por dimensão, separadas por unidade) | Concluída | `consolidate.test.ts` |
+| F7 | Consolidação em SQL com replicação por tipologia, particularidades, substituições e conversão de unidade | Concluída | `consolidation.test.ts` (valores conhecidos, cenários B e C) |
+| F7 | Equivalência SQL × referência do domínio | Concluída | `consolidation.test.ts` (14 combinações de agrupamento e filtro) |
+| F7 | Desempenho: 200.000 linhas efetivas em < 2 s | Concluída | `consolidation-perf.test.ts` (~0,5–0,7 s medidos) |
+| F7 | Tela Consolidações: dimensões, filtros, totais por unidade, detalhamento até a memória | Concluída | E2E, revisão visual desktop/390px |
+| F7 | Troca de unidade de serviço medido só na mesma grandeza | Concluída | `consolidation.test.ts` |
+| F8–F10 | Demais fases | Planejada | ver plano, seção 10 |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 89 · `apps/api` (integração, Postgres real): 117 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 9
+- `packages/domain`: 92 · `apps/api` (integração, Postgres real): 125 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 10

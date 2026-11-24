@@ -181,7 +181,7 @@ function ItemView({ projectId, item, canEdit }: { projectId: string; item: WbsNo
   );
 }
 
-function MeasurementDetail({ projectId, id, canEdit, onRevise }: { projectId: string; id: string; canEdit: boolean; onRevise: (m: MeasurementDto, recalcVersionId?: string) => void }) {
+export function MeasurementDetail({ projectId, id, canEdit, onRevise }: { projectId: string; id: string; canEdit: boolean; onRevise: (m: MeasurementDto, recalcVersionId?: string) => void }) {
   const d = useMeasurement(projectId, id);
   const act = useAction([mKeys.all(projectId)]);
   if (d.isPending) return <Loading />;

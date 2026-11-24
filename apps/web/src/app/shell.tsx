@@ -30,7 +30,7 @@ const PROJECT: NavItem[] = [
   { label: 'EAP', projectPath: 'eap' },
   { label: 'Quantitativos', projectPath: 'quantitativos' },
   { label: 'Memórias de cálculo', projectPath: 'memorias' },
-  { label: 'Consolidações', phase: 7 },
+  { label: 'Consolidações', projectPath: 'consolidacoes' },
   { label: 'Revisões', phase: 8 },
 ];
 

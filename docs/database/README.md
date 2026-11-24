@@ -76,3 +76,6 @@ A declividade e as profundidades dos trechos não são armazenadas: são derivad
 | `measurement_revision` | Memória de cálculo: método, versão da fórmula, entradas, memória (JSONB), quantidade `NUMERIC(28,10)`, unidade, documento de origem, motivo | `UNIQUE(measurementId, number)`; método FORMULA ⇔ versão informada; motivo obrigatório a partir da R2; só versão **publicada** de fórmula (trigger); **somente inclusão** (trigger) |
 
 Também foram acrescentados `UNIQUE(id, projectId)` em `network_node`, `network_segment` e `physical_element` para as FKs compostas das âncoras.
+
+## F7 — consolidação
+Sem tabelas novas. A consolidação é uma consulta (`apps/api/src/modules/consolidation/sql.ts`) sobre `measurement`, `measurement_revision`, `dwelling_unit`, `typology_element`, `unit_override`, `structure_node`, `wbs_node` e infraestrutura, em transação somente leitura (ADR-017). Usa o índice único `typology_element(revisionId, stableKey)` para verificar o elemento na revisão fixada de cada unidade.

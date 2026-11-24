@@ -1,10 +1,15 @@
 # Backlog técnico
 
-## Próximo (F7 — Consolidação)
-- Serviço de consolidação em SQL a partir das linhas efetivas (replicação por tipologia aplicada) + implementação de referência em `packages/domain` e testes de equivalência.
-- Dimensões: item/nível da EAP, serviço, categoria, módulo, torre/pavimento/quadra/lote, tipologia, sistema/rede; filtros e drill-down até a memória de cálculo.
-- Conversão para a unidade do serviço quando a unidade de uma revisão antiga diferir da atual.
-- Desempenho (RNF06): ≥ 200.000 linhas efetivas em < 2 s.
+## Próximo (F8 — Revisões e rastreabilidade)
+- Emissão de revisões do empreendimento (R00, R01…) que congelam EAP, cadastro e medições por referência a revisões imutáveis.
+- Relatórios e consolidações sobre uma revisão emitida (lidos do snapshot, não do estado atual).
+- Comparação entre revisões: inclusões, exclusões e alterações com delta de quantidade.
+- Histórico por entidade na interface.
+
+## Decisões da F7 a validar com o usuário
+- Dimensões disponíveis e atalhos (por serviço, por item da EAP, por tipologia, por torre e pavimento, por quadra e lote, por sistema e rede).
+- Localização física de trechos pela seção de rua; de dispositivos pela localização informada; de elementos pelo nó do cadastro.
+- Unidades arquivadas no cadastro deixam de receber a replicação por tipologia.
 
 ## Decisões da F6 a validar com o usuário
 - Contagem (un, pç) é tratada como adimensional nas fórmulas; constantes com unidade (ex.: folga de 0,10 m) devem ser declaradas como variável.

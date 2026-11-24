@@ -1,3 +1,4 @@
+import { ConsolidationPage } from './features/consolidation/consolidation-page';
 import { FormulasPage } from './features/measurements/formulas-page';
 import { MemoriesPage } from './features/measurements/memories-page';
 import { QuantitiesPage } from './features/measurements/quantities-page';
@@ -69,6 +70,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="formulas" element={<FormulasPage />} />
               <Route path="empreendimentos/:projectId/quantitativos" element={<QuantitiesPage />} />
               <Route path="empreendimentos/:projectId/memorias" element={<MemoriesPage />} />
+              <Route path="empreendimentos/:projectId/consolidacoes" element={<ConsolidationPage />} />
               <Route path="administracao" element={<AdminPage />} />
               <Route path="administracao/catalogo" element={<CatalogPage />} />
               <Route path="*" element={<EmptyState title="Página não encontrada">Verifique o endereço ou use o menu lateral.</EmptyState>} />
