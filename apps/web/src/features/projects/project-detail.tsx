@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PROJECT_CLASSIFICATION_LABELS, type AuditEntryDto, type MemberDto, type ProjectDto } from '@eapq/contracts';
+import { PROJECT_CLASSIFICATION_LABELS, type AuditEntryDto, type MemberDto, type ProjectDto, type StructureDto } from '@eapq/contracts';
 import { projectPermissions, type ProjectRole } from '@eapq/domain';
 import { Breadcrumbs } from '../../app/shell';
 import { Button } from '../../components/ui/button';
@@ -170,12 +170,31 @@ function Overview({ p }: { p: ProjectDto }) {
         )}
       </section>
       <section className="border-l border-line pl-5">
-        <h2 className="mb-2 font-display text-[18px] font-semibold">Próximas etapas do produto</h2>
-        <p className="text-[14px] text-muted">
-          O cadastro físico (fases, quadras, lotes, torres, pavimentos e unidades) e o assistente de estruturação chegam na fase 2.
-          Até lá, este empreendimento guarda os dados de identificação, a equipe e o histórico de alterações.
-        </p>
+        <h2 className="mb-2 font-display text-[18px] font-semibold">Cadastro físico</h2>
+        <StructureSummary projectId={p.id} />
       </section>
+    </div>
+  );
+}
+
+function StructureSummary({ projectId }: { projectId: string }) {
+  const s = useQuery({ queryKey: ['project', projectId, 'structure'], queryFn: () => api<StructureDto>('GET', `/projects/${projectId}/structure`) });
+  if (s.isPending) return <Loading />;
+  if (s.isError) return <ErrorState message={errorMessage(s.error)} />;
+  const active = s.data.nodes.filter((n) => !n.archivedAt);
+  const units = active.filter((n) => n.kind === 'DWELLING_UNIT').length;
+  const lots = active.filter((n) => n.kind === 'LOT').length;
+  return (
+    <div className="text-[14px]">
+      {s.data.modules.length === 0 ? (
+        <p className="text-muted">Ainda não estruturado. Use o assistente para gerar torres, pavimentos, unidades, quadras e lotes.</p>
+      ) : (
+        <p>
+          <span className="font-mono">{s.data.modules.length}</span> módulo(s), <span className="font-mono">{units}</span> unidades
+          {lots > 0 && <>, <span className="font-mono">{lots}</span> lotes</>}.
+        </p>
+      )}
+      <Link to={`/empreendimentos/${projectId}/cadastro`} className="mt-2 inline-block font-medium text-cyan-ink hover:underline">Abrir cadastro físico</Link>
     </div>
   );
 }

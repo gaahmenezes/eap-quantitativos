@@ -8,6 +8,8 @@ import { useSession } from '../features/auth/session';
 interface NavItem {
   label: string;
   to?: string;
+  /** Caminho relativo ao empreendimento selecionado. */
+  projectPath?: string;
   /** Fase do plano em que o módulo será entregue (itens ainda não navegáveis). */
   phase?: number;
 }
@@ -21,7 +23,7 @@ const GLOBAL: NavItem[] = [
 ];
 
 const PROJECT: NavItem[] = [
-  { label: 'Cadastro físico', phase: 2 },
+  { label: 'Cadastro físico', projectPath: 'cadastro' },
   { label: 'Infraestrutura', phase: 3 },
   { label: 'Construtivo', phase: 3 },
   { label: 'EAP', phase: 5 },
@@ -31,17 +33,18 @@ const PROJECT: NavItem[] = [
   { label: 'Revisões', phase: 8 },
 ];
 
-function Item({ item }: { item: NavItem }) {
+function Item({ item: raw, projectId }: { item: NavItem; projectId?: string }) {
+  const item = raw.projectPath ? { ...raw, to: projectId ? `/empreendimentos/${projectId}/${raw.projectPath}` : undefined } : raw;
   if (!item.to) {
     return (
       <li>
         <span
           aria-disabled="true"
-          title={`Módulo previsto para a fase ${item.phase}`}
+          title={item.phase ? `Módulo previsto para a fase ${item.phase}` : 'Selecione um empreendimento'}
           className="flex items-center justify-between px-4 py-1.5 text-[14px] text-graphite-400"
         >
           {item.label}
-          <span className="text-[11.5px] text-graphite-600">fase {item.phase}</span>
+          {item.phase && <span className="text-[11.5px] text-graphite-600">fase {item.phase}</span>}
         </span>
       </li>
     );
@@ -107,7 +110,7 @@ export function Shell() {
               'Selecione um empreendimento'
             )}
           </div>
-          <ul>{PROJECT.map((i) => <Item key={i.label} item={i} />)}</ul>
+          <ul>{PROJECT.map((i) => <Item key={i.label} item={i} projectId={projectId} />)}</ul>
         </nav>
         <div className={`${menuOpen ? 'flex' : 'hidden'} items-center justify-between gap-2 border-t border-graphite-800 px-4 py-3 text-[13px] md:flex`}>
           <span className="truncate text-graphite-400" title={me?.user.email}>

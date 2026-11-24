@@ -17,6 +17,8 @@ import { DashboardPage } from './features/dashboard/dashboard-page';
 import { ProjectsPage } from './features/projects/projects-page';
 import { ProjectDetailPage } from './features/projects/project-detail';
 import { AdminPage } from './features/admin/admin-page';
+import { StructurePage } from './features/structure/structure-page';
+import { WizardPage } from './features/structure/wizard-page';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +50,8 @@ createRoot(document.getElementById('root')!).render(
               <Route index element={<DashboardPage />} />
               <Route path="empreendimentos" element={<ProjectsPage />} />
               <Route path="empreendimentos/:projectId" element={<ProjectDetailPage />} />
+              <Route path="empreendimentos/:projectId/cadastro" element={<StructurePage />} />
+              <Route path="empreendimentos/:projectId/cadastro/assistente" element={<WizardPage />} />
               <Route path="administracao" element={<AdminPage />} />
               <Route path="*" element={<EmptyState title="Página não encontrada">Verifique o endereço ou use o menu lateral.</EmptyState>} />
             </Route>
