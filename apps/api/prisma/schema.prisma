@@ -56,6 +56,8 @@ model Organization {
   services          Service[]
   wbsTemplates      WbsTemplate[]
   formulas          Formula[]
+  documents         Document[]
+  importJobs        ImportJob[]
 
   @@map("organization")
 }
@@ -961,6 +963,7 @@ model WbsGenerationRun {
 enum MeasurementMethod {
   MANUAL
   FORMULA
+  IMPORTED
 }
 
 enum MeasurementAnchorKind {
@@ -1074,6 +1077,8 @@ model MeasurementRevision {
   unitId           String            @db.Uuid
   /// Documento de origem (prancha, memorial, levantamento de campo…).
   sourceReference  String?           @db.VarChar(300)
+  /// Arquivo de origem anexado (prancha, memorial, planilha de campo).
+  documentId       String?           @db.Uuid
   notes            String?           @db.VarChar(2000)
   reason           String?           @db.VarChar(500)
   createdById      String            @db.Uuid
@@ -1084,6 +1089,8 @@ model MeasurementRevision {
   unit           UnitOfMeasure   @relation(fields: [unitId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
   snapshots RevisionMeasurement[]
+
+  document Document? @relation(fields: [documentId, organizationId], references: [id, organizationId], onDelete: Restrict)
 
   @@unique([measurementId, number])
   @@index([projectId, createdAt])
@@ -1216,4 +1223,92 @@ model RevisionLabel {
 
   @@id([revisionId, entityId])
   @@map("revision_label")
+}
+
+// ===================== F9 — Documentos, importação e exportação =====================
+
+enum ImportKind {
+  SERVICES
+  STRUCTURE
+  MEASUREMENTS
+}
+
+enum ImportStatus {
+  UPLOADED
+  VALIDATED
+  APPLIED
+  CANCELLED
+}
+
+enum ImportRowStatus {
+  PENDING
+  VALID
+  WARNING
+  ERROR
+}
+
+/// Arquivo enviado. Conteúdo fora do banco (StorageService), nome aleatório; tipo verificado pela assinatura.
+model Document {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  organizationId String   @db.Uuid
+  projectId      String?  @db.Uuid
+  fileName       String   @db.VarChar(255)
+  kind           String   @db.VarChar(10)
+  mime           String   @db.VarChar(120)
+  size           Int
+  sha256         String   @db.Char(64)
+  storageKey     String   @db.VarChar(80)
+  createdById    String   @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  revisions    MeasurementRevision[]
+  importJobs   ImportJob[]
+
+  @@unique([id, organizationId])
+  @@unique([storageKey])
+  @@index([organizationId, projectId])
+  @@map("document")
+}
+
+/// Importação em etapas. Nada é gravado nas tabelas de domínio antes de APPLIED.
+model ImportJob {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  organizationId String       @db.Uuid
+  projectId      String?      @db.Uuid
+  kind           ImportKind
+  status         ImportStatus @default(UPLOADED)
+  documentId     String       @db.Uuid
+  sheets         Json
+  sheet          String?      @db.VarChar(100)
+  headers        Json
+  mapping        Json?
+  summary        Json?
+  createdById    String       @db.Uuid
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
+  appliedAt      DateTime?    @db.Timestamptz(3)
+  version        Int          @default(1)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  document     Document     @relation(fields: [documentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  rows         ImportRow[]
+
+  @@index([organizationId, projectId, createdAt])
+  @@map("import_job")
+}
+
+model ImportRow {
+  jobId     String          @db.Uuid
+  rowNumber Int
+  values    Json
+  status    ImportRowStatus @default(PENDING)
+  messages  Json            @default("[]")
+  data      Json?
+
+  job ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, rowNumber])
+  @@index([jobId, status])
+  @@map("import_row")
 }

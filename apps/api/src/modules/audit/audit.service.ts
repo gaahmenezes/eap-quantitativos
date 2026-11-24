@@ -22,6 +22,18 @@ const json = (v: unknown) =>
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Vários registros de uma vez (importações), na mesma transação da alteração. */
+  async recordMany(tx: Tx, actor: Actor, entries: AuditInput[]) {
+    for (let i = 0; i < entries.length; i += 1000) {
+      await tx.auditLog.createMany({
+        data: entries.slice(i, i + 1000).map((e) => ({
+          organizationId: actor.organizationId, projectId: e.projectId ?? null, actorId: actor.userId, entityType: e.entityType, entityId: e.entityId,
+          action: e.action, before: json(e.before), after: json(e.after), reason: e.reason ?? null, requestId: actor.requestId,
+        })),
+      });
+    }
+  }
+
   async record(tx: Tx, actor: Actor | { userId: null; organizationId: string; requestId: string }, e: AuditInput) {
     await tx.auditLog.create({
       data: {

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
 import { createApp } from '../src/app.factory.js';
 import { loadConfig } from '../src/config.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -17,6 +18,7 @@ export async function bootApp(overrides: Record<string, string> = {}): Promise<{
     DATABASE_URL: process.env['TEST_DATABASE_URL'],
     WEB_ORIGIN: 'http://localhost:5173',
     RATE_LIMIT_ENABLED: 'false',
+    STORAGE_DIR: `${tmpdir()}/eapq-test-storage`,
     ...overrides,
   });
   const app = await createApp(config);
@@ -83,3 +85,19 @@ export const newProject = (code = `P-${Math.floor(Math.random() * 1e8)}`) => ({
   classification: 'VERTICAL',
   description: 'Duas torres residenciais',
 });
+
+/** Envio multipart (arquivo + campos) com CSRF. */
+export function upload(c: Client, url: string, fields: Record<string, string>, fileName: string, content: Buffer) {
+  let r = c.agent.post(url).set('X-CSRF-Token', c.csrf);
+  for (const [k, v] of Object.entries(fields)) r = r.field(k, v);
+  return r.attach('file', content, fileName);
+}
+
+/** Leitura binária de resposta (exportações e downloads). */
+export function binary(r: request.Test) {
+  return r.buffer(true).parse((res, cb) => {
+    const chunks: Buffer[] = [];
+    res.on('data', (d: Buffer) => chunks.push(d));
+    res.on('end', () => cb(null, Buffer.concat(chunks)));
+  });
+}

@@ -3,5 +3,5 @@ import { ConsolidationModule } from '../consolidation/consolidation.module.js';
 import { RevisionsController } from './revisions.controller.js';
 import { RevisionsService } from './revisions.service.js';
 
-@Module({ imports: [ConsolidationModule], controllers: [RevisionsController], providers: [RevisionsService] })
+@Module({ imports: [ConsolidationModule], controllers: [RevisionsController], providers: [RevisionsService], exports: [RevisionsService] })
 export class RevisionsModule {}

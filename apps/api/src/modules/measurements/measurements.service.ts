@@ -163,6 +163,7 @@ export class MeasurementsService {
       const f = this.anchorFields(input.anchor);
       await this.checkAnchor(tx, projectId, f, ctx);
       await this.checkOverlap(tx, projectId, input.wbsNodeId, input.serviceId, f, ctx);
+      await this.checkDocument(tx, actor.organizationId, projectId, input.documentId);
       const c = await this.compute(tx, actor.organizationId, target, input.calc, units);
       const m = await tx.measurement.create({ data: { organizationId: actor.organizationId, projectId, wbsNodeId: input.wbsNodeId, serviceId: input.serviceId, ...f, quantity: c.quantity } });
       await tx.measurementRevision.create({ data: this.revisionData(actor, projectId, m.id, 1, c, target.id, input) });
@@ -171,8 +172,15 @@ export class MeasurementsService {
     }, TX);
   }
 
-  private revisionData(actor: Actor, projectId: string, measurementId: string, number: number, c: Computed, unitId: string, input: { sourceReference?: string | null; notes?: string | null; reason?: string | null }): Prisma.MeasurementRevisionUncheckedCreateInput {
+  private async checkDocument(tx: Tx, organizationId: string, projectId: string, documentId?: string | null) {
+    if (!documentId) return;
+    const d = await tx.document.findFirst({ where: { id: documentId, organizationId, projectId } });
+    if (!d) throw notFound('Documento');
+  }
+
+  private revisionData(actor: Actor, projectId: string, measurementId: string, number: number, c: Computed, unitId: string, input: { sourceReference?: string | null; notes?: string | null; reason?: string | null; documentId?: string | null }): Prisma.MeasurementRevisionUncheckedCreateInput {
     return {
+      documentId: input.documentId ?? null,
       organizationId: actor.organizationId, projectId, measurementId, number, method: c.method, formulaVersionId: c.formulaVersionId,
       inputs: c.inputs, memory: c.memory as unknown as Prisma.InputJsonValue, quantity: c.quantity, unitId,
       sourceReference: input.sourceReference ?? null, notes: input.notes ?? null, reason: input.reason ?? null, createdById: actor.userId,
@@ -188,6 +196,7 @@ export class MeasurementsService {
       if (!m) throw notFound('Medição');
       if (m.archivedAt) throw conflict('ARCHIVED', 'Medição arquivada não pode ser revisada. Restaure-a antes.');
       const { target, units } = await this.serviceWithUnit(tx, actor.organizationId, projectId, m.serviceId);
+      await this.checkDocument(tx, actor.organizationId, projectId, input.documentId);
       const c = await this.compute(tx, actor.organizationId, target, input.calc, units);
       const r = await tx.measurement.updateMany({ where: { id, version }, data: { quantity: c.quantity, currentNumber: { increment: 1 }, version: { increment: 1 } } });
       if (r.count === 0) throw versionConflict();
@@ -228,6 +237,7 @@ export class MeasurementsService {
     ]);
     const unitIds = [...new Set(rows.flatMap((r) => r.revisions.map((v) => v.unitId)))];
     const unitSym = new Map((await this.prisma.unitOfMeasure.findMany({ where: { id: { in: unitIds } }, select: { id: true, symbol: true } })).map((u) => [u.id, u.symbol]));
+    const docs = await documentsById(this.prisma, rows.flatMap((r) => r.revisions.map((v) => v.documentId)));
     const nodeById = new Map(nodes.map((n) => [n.id, n]));
     const svcById = new Map(services.map((s) => [s.id, s]));
     const userById = new Map(users.map((u) => [u.id, u.name]));
@@ -235,7 +245,7 @@ export class MeasurementsService {
     const revDto = (v: MeasurementRevision): MeasurementRevisionDto => ({
       id: v.id, number: v.number, method: v.method, formulaVersionId: v.formulaVersionId, inputs: v.inputs, memory: v.memory as unknown as MemoryDto,
       quantity: v.quantity.toString(), unit: unitSym.get(v.unitId) ?? '', sourceReference: v.sourceReference, notes: v.notes, reason: v.reason,
-      createdAt: v.createdAt.toISOString(), createdBy: userById.get(v.createdById) ?? '—',
+      createdAt: v.createdAt.toISOString(), createdBy: userById.get(v.createdById) ?? '—', document: v.documentId ? docs.get(v.documentId) ?? null : null,
     });
     return rows.map((m) => {
       const current = m.revisions.find((v) => v.number === m.currentNumber)!;
@@ -321,12 +331,13 @@ export class MeasurementsService {
     ]);
     const ctx = await loadContext(this.prisma, projectId);
     const users = new Map((await this.prisma.user.findMany({ where: { id: { in: [...new Set(revs.map((r) => r.createdById))] } }, select: { id: true, name: true } })).map((u) => [u.id, u.name]));
+    const docs = await documentsById(this.prisma, revs.map((r) => r.documentId));
     return {
       total,
       items: revs.map((v) => ({
         id: v.id, number: v.number, method: v.method, formulaVersionId: v.formulaVersionId, inputs: v.inputs, memory: v.memory as unknown as MemoryDto,
         quantity: v.quantity.toString(), unit: v.unit.symbol, sourceReference: v.sourceReference, notes: v.notes, reason: v.reason,
-        createdAt: v.createdAt.toISOString(), createdBy: users.get(v.createdById) ?? '—',
+        createdAt: v.createdAt.toISOString(), createdBy: users.get(v.createdById) ?? '—', document: v.documentId ? docs.get(v.documentId) ?? null : null,
         measurementId: v.measurementId, wbsCode: v.measurement.wbsNode.code, wbsTitle: v.measurement.wbsNode.title,
         serviceCode: v.measurement.service.code, serviceDescription: v.measurement.service.description, anchorLabel: anchorLabel(v.measurement, ctx).label,
       })),
@@ -359,6 +370,14 @@ export class MeasurementsService {
       physicalElements: [...ctx.physical.values()].filter((p) => !p.archivedAt).map((p) => ({ id: p.id, label: anchorLabel({ anchorKind: 'PHYSICAL_ELEMENT', physicalElementId: p.id, structureNodeId: null, networkSegmentId: null, networkNodeId: null, typologyId: null, elementKey: null, dwellingUnitId: null }, ctx).label })),
     };
   }
+}
+
+/** Metadados dos documentos anexados (sem o conteúdo). */
+export async function documentsById(tx: Tx, ids: (string | null)[]) {
+  const wanted = [...new Set(ids.filter((x): x is string => !!x))];
+  if (!wanted.length) return new Map<string, { id: string; fileName: string; kind: string; size: number }>();
+  const docs = await tx.document.findMany({ where: { id: { in: wanted } }, select: { id: true, fileName: true, kind: true, size: true } });
+  return new Map(docs.map((d) => [d.id, d]));
 }
 
 function toExpand(m: Measurement): ExpandMeasurement {

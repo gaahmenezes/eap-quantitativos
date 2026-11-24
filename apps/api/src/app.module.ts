@@ -23,6 +23,9 @@ import { FormulasModule } from './modules/formulas/formulas.module.js';
 import { MeasurementsModule } from './modules/measurements/measurements.module.js';
 import { ConsolidationModule } from './modules/consolidation/consolidation.module.js';
 import { RevisionsModule } from './modules/revisions/revisions.module.js';
+import { DocumentsModule } from './modules/documents/documents.module.js';
+import { ImportsModule } from './modules/imports/imports.module.js';
+import { ExportsModule } from './modules/exports/exports.module.js';
 import { PrismaService } from './prisma/prisma.service.js';
 
 @Global()
@@ -71,6 +74,9 @@ export class AppModule implements NestModule {
         MeasurementsModule,
         ConsolidationModule,
         RevisionsModule,
+        DocumentsModule,
+        ImportsModule,
+        ExportsModule,
       ],
       controllers: [HealthController],
       providers: [

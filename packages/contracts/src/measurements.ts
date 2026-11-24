@@ -83,6 +83,8 @@ export const previewMeasurementSchema = z.object({ serviceId: z.uuid(), calc: ca
 
 const sourceFields = {
   sourceReference: optionalText(300),
+  /** Arquivo de origem já enviado (POST /projects/:id/documents). */
+  documentId: z.uuid().nullable().optional(),
   notes: optionalText(2000),
 };
 
@@ -112,7 +114,8 @@ export const listRevisionsQuery = z.object({
 });
 
 export interface MemoryDto {
-  method: 'MANUAL' | 'FORMULA';
+  method: 'MANUAL' | 'FORMULA' | 'IMPORTED';
+  import?: { jobId: string; fileName: string; row: number } | null;
   expression: string | null;
   inputs: { symbol: string; label: string; value: string; unit: string; baseValue: string; baseUnit: string }[];
   substituted: string | null;
@@ -132,9 +135,10 @@ export interface CalcPreviewDto {
 export interface MeasurementRevisionDto {
   id: string;
   number: number;
-  method: 'MANUAL' | 'FORMULA';
+  method: 'MANUAL' | 'FORMULA' | 'IMPORTED';
   formulaVersionId: string | null;
   inputs: unknown;
+  document: { id: string; fileName: string; kind: string; size: number } | null;
   memory: MemoryDto;
   quantity: string;
   unit: string;

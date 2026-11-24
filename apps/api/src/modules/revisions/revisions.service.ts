@@ -12,6 +12,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { ConsolidationService } from '../consolidation/consolidation.service.js';
 import { enrichedCte } from '../consolidation/sql.js';
 import { anchorLabel, expandUnits, loadContext } from '../measurements/context.js';
+import { documentsById } from '../measurements/measurements.service.js';
 
 const TX = { timeout: 120_000 } as const;
 const MAX_LIST = 500;
@@ -119,6 +120,7 @@ export class RevisionsService {
         id: v.id, number: v.number, method: v.method, formulaVersionId: v.formulaVersionId, inputs: v.inputs, memory: v.memory as unknown as MemoryDto,
         quantity: new Decimal(v.quantity.toString()).toFixed(), unit: v.unit.symbol, sourceReference: v.sourceReference, notes: v.notes, reason: v.reason,
         createdAt: v.createdAt.toISOString(), createdBy: author?.name ?? '—',
+        document: v.documentId ? (await documentsById(this.prisma, [v.documentId])).get(v.documentId) ?? null : null,
       },
     };
   }

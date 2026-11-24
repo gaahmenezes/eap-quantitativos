@@ -10,6 +10,10 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  /** Pasta dos arquivos enviados (fora da raiz pública da web). */
+  STORAGE_DIR: z.string().min(1).default('./storage'),
+  /** Tamanho máximo de upload, em MB. */
+  UPLOAD_MAX_MB: z.coerce.number().positive().max(100).default(20),
   ALLOW_SIGNUP: z
     .enum(['true', 'false'])
     .default('true')
