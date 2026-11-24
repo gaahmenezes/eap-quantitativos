@@ -28,6 +28,7 @@ import { PrismaService, type Tx } from '../../prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { AuditService } from '../audit/audit.service.js';
 import { recomputeStructureCodes, renumberSiblings } from './codes.js';
+import { latestPublishedRevision } from '../constructive/constructive.service.js';
 
 const MAX_DUPLICATE = 5000;
 const TX = { timeout: 60_000, maxWait: 10_000 } as const;
@@ -195,7 +196,10 @@ export class StructureService {
           origin: 'MANUAL',
         },
       });
-      if (input.kind === 'DWELLING_UNIT') await tx.dwellingUnit.create({ data: { structureNodeId: id, projectId, typologyId: input.typologyId ?? null } });
+      if (input.kind === 'DWELLING_UNIT') {
+        const pinned = input.typologyId ? await latestPublishedRevision(tx, input.typologyId) : null;
+        await tx.dwellingUnit.create({ data: { structureNodeId: id, projectId, typologyId: input.typologyId ?? null, pinnedRevisionId: pinned?.id ?? null } });
+      }
       if (input.kind === 'LOT') await tx.lotDetail.create({ data: { structureNodeId: id, projectId } });
       await recomputeStructureCodes(tx, projectId);
       const created = await this.loadNode(tx, projectId, id);
@@ -225,7 +229,12 @@ export class StructureService {
         if (n.kind !== 'DWELLING_UNIT') throw new AppError(422, 'VALIDATION_FAILED', 'Dados inválidos', 'Tipologia só se aplica a unidades habitacionais.');
         const mod = await tx.projectModule.findUniqueOrThrow({ where: { id: n.moduleId } });
         await this.checkTypology(tx, projectId, mod.kind, input.typologyId);
-        await tx.dwellingUnit.update({ where: { structureNodeId: n.id }, data: { typologyId: input.typologyId } });
+        // Troca explícita de tipologia: a unidade passa a seguir a última revisão publicada da nova tipologia.
+        // Particularidades existentes são mantidas (podem ficar órfãs e são sinalizadas).
+        if (input.typologyId !== (n.unit?.typologyId ?? null)) {
+          const pinned = input.typologyId ? await latestPublishedRevision(tx, input.typologyId) : null;
+          await tx.dwellingUnit.update({ where: { structureNodeId: n.id }, data: { typologyId: input.typologyId, pinnedRevisionId: pinned?.id ?? null } });
+        }
       }
       if (input.lot !== undefined) {
         if (n.kind !== 'LOT') throw new AppError(422, 'VALIDATION_FAILED', 'Dados inválidos', 'Área e testada só se aplicam a lotes.');
@@ -356,7 +365,7 @@ export class StructureService {
       }
       await tx.structureNode.createMany({ data: rows });
       await tx.dwellingUnit.createMany({
-        data: kept.filter((x) => x.unit).map((x) => ({ structureNodeId: idMap.get(x.id)!, projectId, typologyId: x.unit!.typologyId })),
+        data: kept.filter((x) => x.unit).map((x) => ({ structureNodeId: idMap.get(x.id)!, projectId, typologyId: x.unit!.typologyId, pinnedRevisionId: x.unit!.pinnedRevisionId })),
       });
       await tx.lotDetail.createMany({
         data: kept.filter((x) => x.lot).map((x) => ({ structureNodeId: idMap.get(x.id)!, projectId, area: x.lot!.area, frontage: x.lot!.frontage })),
@@ -457,12 +466,14 @@ export class StructureService {
       await this.assertEditable(tx, actor.organizationId, projectId);
       // Tipologias: reutiliza existentes de mesmo código e tipo; conflito de tipo é erro.
       const typologyIds = new Map<string, string>();
+      const typologyPins = new Map<string, string | null>();
       for (const t of plan.typologies) {
         const existing = await tx.dwellingTypology.findUnique({ where: { projectId_code: { projectId, code: t.code } } });
         if (existing) {
           if (existing.kind !== t.kind) throw conflict('TYPOLOGY_KIND_MISMATCH', `A tipologia ${t.code} já existe com outro tipo.`);
           if (existing.archivedAt) throw conflict('TYPOLOGY_ARCHIVED', `A tipologia ${t.code} está arquivada.`);
           typologyIds.set(t.code, existing.id);
+          typologyPins.set(t.code, (await latestPublishedRevision(tx, existing.id))?.id ?? null);
         } else {
           const created = await tx.dwellingTypology.create({
             data: { organizationId: actor.organizationId, projectId, code: t.code, name: t.name, kind: t.kind },
@@ -502,7 +513,14 @@ export class StructureService {
             code: '',
             origin: 'WIZARD',
           });
-          if (n.kind === 'DWELLING_UNIT') units.push({ structureNodeId: id, projectId, typologyId: n.typologyCode ? typologyIds.get(n.typologyCode)! : null });
+          if (n.kind === 'DWELLING_UNIT') {
+            units.push({
+              structureNodeId: id,
+              projectId,
+              typologyId: n.typologyCode ? typologyIds.get(n.typologyCode)! : null,
+              pinnedRevisionId: n.typologyCode ? (typologyPins.get(n.typologyCode) ?? null) : null,
+            });
+          }
           if (n.kind === 'LOT') lots.push({ structureNodeId: id, projectId });
         }
         for (let i = 0; i < rows.length; i += 2000) await tx.structureNode.createMany({ data: rows.slice(i, i + 2000) });

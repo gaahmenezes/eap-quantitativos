@@ -45,10 +45,12 @@ model Organization {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  memberships Membership[]
-  invitations Invitation[]
-  projects    Project[]
-  auditLogs   AuditLog[]
+  memberships  Membership[]
+  invitations  Invitation[]
+  projects     Project[]
+  auditLogs    AuditLog[]
+  systemTypes  InfrastructureSystemType[]
+  elementTypes ElementType[]
 
   @@map("organization")
 }
@@ -140,12 +142,13 @@ model Project {
   createdAt      DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime              @updatedAt @db.Timestamptz(3)
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   members      ProjectMember[]
   auditLogs    AuditLog[]
   modules      ProjectModule[]
   nodes        StructureNode[]
   typologies   DwellingTypology[]
+  systems      InfrastructureSystem[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, code])
@@ -275,12 +278,16 @@ model StructureNode {
   createdAt      DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
 
-  project  Project         @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  module   ProjectModule   @relation(fields: [moduleId, projectId], references: [id, projectId], onDelete: Restrict)
-  parent   StructureNode?  @relation("NodeTree", fields: [parentId, projectId], references: [id, projectId], onDelete: Restrict)
-  children StructureNode[] @relation("NodeTree")
-  unit     DwellingUnit?
-  lot      LotDetail?
+  project       Project                @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  module        ProjectModule          @relation(fields: [moduleId, projectId], references: [id, projectId], onDelete: Restrict)
+  parent        StructureNode?         @relation("NodeTree", fields: [parentId, projectId], references: [id, projectId], onDelete: Restrict)
+  children      StructureNode[]        @relation("NodeTree")
+  unit          DwellingUnit?
+  lot           LotDetail?
+  systemsScoped InfrastructureSystem[]
+  networkNodes  NetworkNode[]
+  segments      NetworkSegment[]
+  elements      PhysicalElement[]
 
   @@unique([id, projectId])
   @@index([projectId, moduleId, parentId, position])
@@ -290,12 +297,16 @@ model StructureNode {
 
 /// Detalhe 1:1 de nós DWELLING_UNIT: vínculo com a tipologia.
 model DwellingUnit {
-  structureNodeId String  @id @db.Uuid
-  projectId       String  @db.Uuid
-  typologyId      String? @db.Uuid
+  structureNodeId  String  @id @db.Uuid
+  projectId        String  @db.Uuid
+  typologyId       String? @db.Uuid
+  /// Revisão publicada da tipologia que vale para esta unidade (RN-TIP). Só muda por propagação explícita.
+  pinnedRevisionId String? @db.Uuid
 
-  node     StructureNode     @relation(fields: [structureNodeId, projectId], references: [id, projectId], onDelete: Cascade)
-  typology DwellingTypology? @relation(fields: [typologyId, projectId], references: [id, projectId], onDelete: Restrict)
+  node           StructureNode     @relation(fields: [structureNodeId, projectId], references: [id, projectId], onDelete: Cascade)
+  typology       DwellingTypology? @relation(fields: [typologyId, projectId], references: [id, projectId], onDelete: Restrict)
+  pinnedRevision TypologyRevision? @relation(fields: [pinnedRevisionId, projectId], references: [id, projectId], onDelete: Restrict)
+  overrides      UnitOverride[]
 
   @@unique([structureNodeId, projectId])
   @@index([projectId, typologyId])
@@ -330,10 +341,313 @@ model DwellingTypology {
   createdAt      DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
 
-  project Project        @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
-  units   DwellingUnit[]
+  project   Project            @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  units     DwellingUnit[]
+  revisions TypologyRevision[]
 
   @@unique([id, projectId])
   @@unique([projectId, code])
   @@map("dwelling_typology")
+}
+
+// ===================== F3 — Catálogo técnico, infraestrutura e construtivo =====================
+
+enum ElementDomain {
+  INFRA
+  CONSTRUTIVO
+}
+
+enum ElementCategory {
+  NETWORK_NODE
+  NETWORK_SEGMENT
+  ELEMENT
+}
+
+enum AttributeDataType {
+  NUMBER
+  TEXT
+  BOOLEAN
+  ENUM
+}
+
+enum RevisionStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum UnitOverrideOp {
+  EXCLUDE_ELEMENT
+  ADD_ELEMENT
+}
+
+/// Catálogo por organização: tipos de sistema de infraestrutura (extensível sem migração).
+model InfrastructureSystemType {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  code           String    @db.VarChar(30)
+  name           String    @db.VarChar(120)
+  networkBased   Boolean
+  archivedAt     DateTime? @db.Timestamptz(3)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  elementTypes ElementType[]
+  systems      InfrastructureSystem[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@map("infrastructure_system_type")
+}
+
+/// Catálogo por organização: tipos de elemento físico com definição de atributos (ADR-010).
+model ElementType {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  organizationId String          @db.Uuid
+  code           String          @db.VarChar(30)
+  name           String          @db.VarChar(120)
+  domain         ElementDomain
+  category       ElementCategory
+  systemTypeId   String?         @db.Uuid
+  archivedAt     DateTime?       @db.Timestamptz(3)
+  version        Int             @default(1)
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
+
+  organization     Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  systemType       InfrastructureSystemType?    @relation(fields: [systemTypeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  attributes       ElementAttributeDefinition[]
+  networkNodes     NetworkNode[]
+  segments         NetworkSegment[]
+  elements         PhysicalElement[]
+  typologyElements TypologyElement[]
+  overrides        UnitOverride[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@map("element_type")
+}
+
+model ElementAttributeDefinition {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  elementTypeId String            @db.Uuid
+  key           String            @db.VarChar(40)
+  label         String            @db.VarChar(80)
+  dataType      AttributeDataType
+  unit          String?           @db.VarChar(16)
+  required      Boolean           @default(false)
+  enumValues    String[]
+  min           Decimal?          @db.Decimal(18, 6)
+  max           Decimal?          @db.Decimal(18, 6)
+  position      Int
+
+  elementType ElementType @relation(fields: [elementTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([elementTypeId, key])
+  @@map("element_attribute_definition")
+}
+
+/// Sistema de infraestrutura no empreendimento (ex.: Drenagem da Fase 1).
+model InfrastructureSystem {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  projectId      String    @db.Uuid
+  systemTypeId   String    @db.Uuid
+  name           String    @db.VarChar(120)
+  /// Escopo opcional no cadastro físico (fase, setor, rua…).
+  scopeNodeId    String?   @db.Uuid
+  archivedAt     DateTime? @db.Timestamptz(3)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  project    Project                  @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  systemType InfrastructureSystemType @relation(fields: [systemTypeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  scopeNode  StructureNode?           @relation(fields: [scopeNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  networks   InfrastructureNetwork[]
+  elements   PhysicalElement[]
+
+  @@unique([id, projectId])
+  @@index([organizationId, projectId])
+  @@map("infrastructure_system")
+}
+
+model InfrastructureNetwork {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  projectId      String    @db.Uuid
+  systemId       String    @db.Uuid
+  code           String    @db.VarChar(30)
+  name           String    @db.VarChar(120)
+  archivedAt     DateTime? @db.Timestamptz(3)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  system   InfrastructureSystem @relation(fields: [systemId, projectId], references: [id, projectId], onDelete: Restrict)
+  nodes    NetworkNode[]
+  segments NetworkSegment[]
+
+  @@unique([id, projectId])
+  @@unique([systemId, code])
+  @@map("infrastructure_network")
+}
+
+/// Dispositivo da rede (PV, boca de lobo, registro, poste…). Cotas em metros (NUMERIC).
+model NetworkNode {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  organizationId  String    @db.Uuid
+  projectId       String    @db.Uuid
+  networkId       String    @db.Uuid
+  elementTypeId   String    @db.Uuid
+  code            String    @db.VarChar(30)
+  locationNodeId  String?   @db.Uuid
+  coverElevation  Decimal?  @db.Decimal(10, 3)
+  bottomElevation Decimal?  @db.Decimal(10, 3)
+  attributes      Json      @default("{}")
+  archivedAt      DateTime? @db.Timestamptz(3)
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  network     InfrastructureNetwork @relation(fields: [networkId, projectId], references: [id, projectId], onDelete: Restrict)
+  elementType ElementType           @relation(fields: [elementTypeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  location    StructureNode?        @relation(fields: [locationNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  outgoing    NetworkSegment[]      @relation("SegmentFrom")
+  incoming    NetworkSegment[]      @relation("SegmentTo")
+
+  @@unique([id, networkId])
+  @@unique([networkId, code])
+  @@map("network_node")
+}
+
+/// Trecho entre dois dispositivos da MESMA rede (FKs compostas com networkId).
+model NetworkSegment {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  organizationId   String    @db.Uuid
+  projectId        String    @db.Uuid
+  networkId        String    @db.Uuid
+  elementTypeId    String    @db.Uuid
+  code             String    @db.VarChar(30)
+  fromNodeId       String    @db.Uuid
+  toNodeId         String    @db.Uuid
+  streetSectionId  String?   @db.Uuid
+  /// m
+  length           Decimal   @db.Decimal(12, 3)
+  /// mm (diâmetro nominal)
+  diameter         Decimal?  @db.Decimal(8, 1)
+  material         String?   @db.VarChar(60)
+  /// Cotas de fundo (geratriz inferior) em m
+  upstreamInvert   Decimal?  @db.Decimal(10, 3)
+  downstreamInvert Decimal?  @db.Decimal(10, 3)
+  attributes       Json      @default("{}")
+  archivedAt       DateTime? @db.Timestamptz(3)
+  version          Int       @default(1)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+
+  network       InfrastructureNetwork @relation(fields: [networkId, projectId], references: [id, projectId], onDelete: Restrict)
+  elementType   ElementType           @relation(fields: [elementTypeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  fromNode      NetworkNode           @relation("SegmentFrom", fields: [fromNodeId, networkId], references: [id, networkId], onDelete: Restrict)
+  toNode        NetworkNode           @relation("SegmentTo", fields: [toNodeId, networkId], references: [id, networkId], onDelete: Restrict)
+  streetSection StructureNode?        @relation(fields: [streetSectionId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@unique([networkId, code])
+  @@index([networkId, fromNodeId])
+  @@map("network_segment")
+}
+
+/// Elemento físico avulso: de um sistema de infraestrutura (pavimento, guia, área de terraplenagem)
+/// e/ou localizado num nó do cadastro (área comum, rua, trecho).
+model PhysicalElement {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  organizationId  String    @db.Uuid
+  projectId       String    @db.Uuid
+  elementTypeId   String    @db.Uuid
+  systemId        String?   @db.Uuid
+  structureNodeId String?   @db.Uuid
+  name            String    @db.VarChar(120)
+  attributes      Json      @default("{}")
+  archivedAt      DateTime? @db.Timestamptz(3)
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  elementType   ElementType           @relation(fields: [elementTypeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  system        InfrastructureSystem? @relation(fields: [systemId, projectId], references: [id, projectId], onDelete: Restrict)
+  structureNode StructureNode?        @relation(fields: [structureNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+
+  @@index([projectId, systemId])
+  @@index([projectId, structureNodeId])
+  @@map("physical_element")
+}
+
+/// Revisão da tipologia. PUBLISHED é imutável (trigger); no máximo um DRAFT por tipologia.
+model TypologyRevision {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  projectId      String         @db.Uuid
+  typologyId     String         @db.Uuid
+  number         Int
+  status         RevisionStatus @default(DRAFT)
+  notes          String?        @db.VarChar(1000)
+  publishedAt    DateTime?      @db.Timestamptz(3)
+  publishedById  String?        @db.Uuid
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+
+  typology DwellingTypology  @relation(fields: [typologyId, projectId], references: [id, projectId], onDelete: Restrict)
+  elements TypologyElement[]
+  units    DwellingUnit[]
+
+  @@unique([id, projectId])
+  @@unique([typologyId, number])
+  @@map("typology_revision")
+}
+
+/// Elemento de uma revisão. `stableKey` é preservado entre revisões (identidade do elemento na tipologia).
+model TypologyElement {
+  id             String  @id @default(uuid(7)) @db.Uuid
+  organizationId String  @db.Uuid
+  revisionId     String  @db.Uuid
+  parentId       String? @db.Uuid
+  stableKey      String  @db.Uuid
+  elementTypeId  String  @db.Uuid
+  name           String  @db.VarChar(120)
+  attributes     Json    @default("{}")
+  position       Int
+
+  revision    TypologyRevision  @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  parent      TypologyElement?  @relation("TypologyElementTree", fields: [parentId, revisionId], references: [id, revisionId], onDelete: Cascade)
+  children    TypologyElement[] @relation("TypologyElementTree")
+  elementType ElementType       @relation(fields: [elementTypeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([id, revisionId])
+  @@unique([revisionId, stableKey])
+  @@map("typology_element")
+}
+
+/// Particularidade de uma unidade em relação à tipologia. Nunca é apagada: remoção = arquivamento.
+model UnitOverride {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  organizationId  String         @db.Uuid
+  projectId       String         @db.Uuid
+  unitId          String         @db.Uuid
+  op              UnitOverrideOp
+  targetStableKey String?        @db.Uuid
+  parentStableKey String?        @db.Uuid
+  elementTypeId   String?        @db.Uuid
+  name            String?        @db.VarChar(120)
+  attributes      Json?
+  reason          String         @db.VarChar(500)
+  createdById     String         @db.Uuid
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  archivedAt      DateTime?      @db.Timestamptz(3)
+  archiveReason   String?        @db.VarChar(500)
+
+  unit        DwellingUnit @relation(fields: [unitId, projectId], references: [structureNodeId, projectId], onDelete: Restrict)
+  elementType ElementType? @relation(fields: [elementTypeId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([projectId, unitId])
+  @@map("unit_override")
 }

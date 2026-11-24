@@ -13,6 +13,9 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { ProjectsModule } from './modules/projects/projects.module.js';
 import { StructureModule } from './modules/structure/structure.module.js';
+import { CatalogModule } from './modules/catalog/catalog.module.js';
+import { InfrastructureModule } from './modules/infrastructure/infrastructure.module.js';
+import { ConstructiveModule } from './modules/constructive/constructive.module.js';
 import { PrismaService } from './prisma/prisma.service.js';
 
 @Global()
@@ -51,6 +54,9 @@ export class AppModule implements NestModule {
         OrganizationsModule,
         ProjectsModule,
         StructureModule,
+        CatalogModule,
+        InfrastructureModule,
+        ConstructiveModule,
       ],
       controllers: [HealthController],
       providers: [
