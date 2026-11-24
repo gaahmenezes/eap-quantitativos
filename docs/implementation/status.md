@@ -14,9 +14,9 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F1 | CRUD de empreendimentos (If-Match, arquivamento com motivo) | Concluída | `projects.test.ts`, E2E ciclo de vida |
 | F1 | Histórico (auditoria) por empreendimento na UI | Concluída | E2E ciclo de vida |
 | F1 | Shell da UI, dashboard com dados reais, administração | Concluída | E2E, revisão visual desktop/390px |
-| F1 | CI GitHub Actions | Implementada | `.github/workflows/ci.yml` — **não executado**: repositório remoto ainda não existe |
+| F1 | CI GitHub Actions | Concluída | execução 45315520023 verde (lint, typecheck, testes, E2E) |
 | F1 | docker-compose do banco | Implementada | não testado neste ambiente (sem daemon Docker) |
-| F1 | Push para GitHub | Bloqueada | sessão sem permissão para criar repositório; aguardando `gaahmenezes/eap-quantitativos` |
+| F1 | Push para GitHub | Concluída | branch `claude/f1-fundacao` em `gaahmenezes/eap-quantitativos` |
 | F2 | Cadastro físico + assistente | Planejada | — |
 | F3–F10 | Demais fases | Planejada | ver plano, seção 10 |
 
