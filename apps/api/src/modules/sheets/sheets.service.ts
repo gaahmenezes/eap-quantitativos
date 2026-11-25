@@ -41,16 +41,21 @@ function toAnchorInput(f: AnchorFields | null): AnchorInput | null {
 }
 
 /** Impressão digital do que o lançamento grava: destino, versão do modelo, parâmetros, serviços e linhas. */
-function contentHash(s: Pick<Sheet, 'templateVersionId' | 'wbsNodeId' | 'params' | 'outputMap' | 'rows' | (typeof ANCHOR_COLS)[number]>) {
-  return createHash('sha256').update(JSON.stringify([s.templateVersionId, s.wbsNodeId, ANCHOR_COLS.map((k) => s[k] ?? null), s.params, s.outputMap, s.rows])).digest('hex');
+function contentHash(s: Pick<Sheet, 'templateVersionId' | 'wbsNodeId' | 'params' | 'outputMap' | 'rows' | 'rowAnchors' | (typeof ANCHOR_COLS)[number]>) {
+  const ra = s.rowAnchors as unknown[];
+  return createHash('sha256').update(JSON.stringify([s.templateVersionId, s.wbsNodeId, ANCHOR_COLS.map((k) => s[k] ?? null), s.params, s.outputMap, s.rows, ...(ra.some(Boolean) ? [ra] : [])])).digest('hex');
 }
+/** Chave curta e estável de uma âncora (para a chave da medição por destino). */
+const anchorKey = (f: AnchorFields) => createHash('sha256').update(JSON.stringify(ANCHOR_COLS.map((k) => f[k] ?? null))).digest('hex').slice(0, 16);
 
 /** Mantém só colunas de entrada do modelo e descarta células vazias. */
-function cleanRows(def: SheetDef, rows: UpdateSheetInput['rows'] & object) {
+function cleanRows(def: SheetDef, rows: UpdateSheetInput['rows'] & object, anchors: (AnchorInput | null)[] = []) {
   const inputs = new Set(def.columns.filter((c) => c.kind === 'input').map((c) => c.key));
   const out = rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k, c]) => inputs.has(k) && ((c.v ?? '').trim() || (c.ref ?? '').trim())).map(([k, c]) => [k, { ...((c.v ?? '').trim() && { v: c.v!.trim() }), ...((c.ref ?? '').trim() && { ref: c.ref!.trim() }) }])));
-  while (out.length && Object.keys(out[out.length - 1]!).length === 0) out.pop(); // linhas vazias no fim não são gravadas
-  return out;
+  const dest = out.map((_, i) => anchors[i] ?? null);
+  // linhas vazias (e sem destino próprio) no fim não são gravadas
+  while (out.length && Object.keys(out[out.length - 1]!).length === 0 && !dest[out.length - 1]) { out.pop(); dest.pop(); }
+  return { rows: out, rowAnchors: dest.some(Boolean) ? dest : [] };
 }
 
 /**
@@ -135,7 +140,7 @@ export class SheetsService {
         data.outputMap = await this.suggestedMap(tx, actor.organizationId, projectId, def, (input.outputMap ?? s.outputMap) as Record<string, string | null>);
         const paramKeys = new Set(def.params.map((p) => p.key));
         data.params = Object.fromEntries(Object.entries((input.params ?? s.params) as Record<string, string>).filter(([k]) => paramKeys.has(k)));
-        if (!input.rows) data.rows = cleanRows(def, s.rows as UpdateSheetInput['rows'] & object);
+        if (!input.rows) Object.assign(data, cleanRows(def, s.rows as UpdateSheetInput['rows'] & object, s.rowAnchors as (AnchorInput | null)[]));
       }
       if (input.title !== undefined) data.title = input.title;
       if (input.wbsNodeId !== undefined) {
@@ -156,7 +161,17 @@ export class SheetsService {
         await this.checkServices(tx, actor.organizationId, projectId, input.outputMap, def);
         data.outputMap = { ...((data.outputMap ?? s.outputMap) as Record<string, string | null>), ...input.outputMap };
       }
-      if (input.rows) data.rows = cleanRows(def, input.rows);
+      if (input.rows || input.rowAnchors) {
+        const rows = input.rows ?? (s.rows as UpdateSheetInput['rows'] & object);
+        const anchors = input.rowAnchors ?? (input.rows ? [] : (s.rowAnchors as (AnchorInput | null)[]));
+        if (anchors.length > rows.length) throw invalid('Há mais destinos por linha do que linhas.', 'rowAnchors');
+        const unique = new Map(anchors.filter((a): a is AnchorInput => !!a).map((a) => [JSON.stringify(a), a]));
+        if (unique.size) {
+          const ctx = await loadContext(tx, projectId);
+          for (const a of unique.values()) await this.measurements.checkAnchor(tx, projectId, this.measurements.anchorFields(a), ctx);
+        }
+        Object.assign(data, cleanRows(def, rows, anchors));
+      }
       if (input.sourceReference !== undefined) data.sourceReference = input.sourceReference;
       if (input.documentId !== undefined) {
         if (input.documentId) await this.measurements.checkDocument(tx, actor.organizationId, projectId, input.documentId);
@@ -165,8 +180,9 @@ export class SheetsService {
       const r = await tx.sheet.updateMany({ where: { id, version }, data: { ...data, version: { increment: 1 } } });
       if (r.count === 0) throw versionConflict();
       const summary = (x: { rows?: unknown }) => (Array.isArray(x.rows) ? { rowCount: x.rows.length } : {});
-      const { rows: _r, ...after } = data;
-      await this.audit.record(tx, actor, { projectId, entityType: 'Sheet', entityId: id, action: 'UPDATE', before: { title: s.title, ...summary(s) }, after: { ...after, ...summary(data) } });
+      const { rows: _r, rowAnchors: ra, ...after } = data;
+      const destCount = Array.isArray(ra) ? { rowDestinations: (ra as unknown[]).filter(Boolean).length } : {};
+      await this.audit.record(tx, actor, { projectId, entityType: 'Sheet', entityId: id, action: 'UPDATE', before: { title: s.title, ...summary(s) }, after: { ...after, ...summary(data), ...destCount } });
     }, TX);
   }
 
@@ -205,10 +221,11 @@ export class SheetsService {
       if (s.archivedAt) throw conflict('ARCHIVED', 'Ficha arquivada não pode ser lançada.');
       if (!s.wbsNodeId) throw invalid('Escolha o item da EAP que recebe os quantitativos da ficha.', 'wbsNodeId');
       const anchor = anchorOf(s);
-      if (!anchor) throw invalid('Escolha onde a ficha mede (item do cadastro físico, tipologia, trecho…).', 'anchor');
       await this.checkWbs(tx, actor.organizationId, projectId, s.wbsNodeId);
       const ctx = await loadContext(tx, projectId);
-      await this.measurements.checkAnchor(tx, projectId, anchor, ctx);
+      if (anchor) await this.measurements.checkAnchor(tx, projectId, anchor, ctx);
+      const rowAnchors = (s.rowAnchors as (AnchorInput | null)[]).map((a) => (a ? this.measurements.anchorFields(a) : null));
+      for (const f of new Map(rowAnchors.filter((f): f is AnchorFields => !!f).map((f) => [anchorKey(f), f])).values()) await this.measurements.checkAnchor(tx, projectId, f, ctx);
 
       const def = s.templateVersion.definition as unknown as SheetDef;
       const units = await loadUnits(tx, actor.organizationId);
@@ -223,33 +240,51 @@ export class SheetsService {
       }
       const filled = result.rows.filter((r) => !r.blank).length;
       if (!filled) throw invalid('A ficha não tem linhas preenchidas.', 'rows');
+      // grupos de linhas por destino (destino da linha ou, na falta, o da ficha)
+      const groups = new Map<string, { anchor: AnchorFields; isDefault: boolean; idx: number[] }>();
+      for (const [i, r] of result.rows.entries()) {
+        if (r.blank) continue;
+        const f = rowAnchors[i] ?? anchor;
+        if (!f) throw invalid(`A linha ${i + 1} (${rowLabel(def, rows[i]!, i)}) não tem destino: escolha a âncora da ficha ou da linha.`, `rows.${i}`);
+        const isDefault = !rowAnchors[i] || (!!anchor && anchorKey(rowAnchors[i]!) === anchorKey(anchor));
+        const k = isDefault ? '' : anchorKey(f);
+        const g = groups.get(k) ?? { anchor: f, isDefault, idx: [] };
+        g.idx.push(i);
+        groups.set(k, g);
+      }
 
       const outputMap = s.outputMap as Record<string, string | null>;
       const params_ = def.params.map((p) => ({ key: p.key, label: p.label, unit: p.unit, value: params[p.key] ?? p.value }));
       const plans: OwnedPlan[] = [];
-      for (const o of def.outputs) {
-        const serviceId = outputMap[o.key] ?? null;
-        if (!serviceId) continue;
-        const { service, target } = await this.measurements.serviceWithUnit(tx, actor.organizationId, projectId, serviceId);
-        if (service.archivedAt) throw invalid(`O serviço ${service.code} está arquivado.`, `outputMap.${o.key}`);
-        const total = result.totals.find((t) => t.key === o.key)!;
-        const quantity = outputInUnit(total, target);
-        if (quantity === null) throw invalid(`A saída "${o.label}" está em ${total.unit}, mas o serviço ${service.code} é medido em ${target.symbol}.`, `outputMap.${o.key}`);
-        if (/^-?0(\.0+)?$/.test(quantity)) continue;
-        const col = def.columns.find((c) => c.key === o.column)!;
-        const sheetMemory: SheetMemoryDto = {
-          sheetId: s.id, title: s.title,
-          template: { code: s.templateVersion.template.code, name: s.templateVersion.template.name, versionNumber: s.templateVersion.number },
-          output: { key: o.key, label: o.label }, column: { key: col.key, label: col.label, expression: col.expression ?? null },
-          params: params_,
-          rows: result.rows.flatMap((r, i) => (r.blank ? [] : [{ index: i + 1, label: rowLabel(def, rows[i]!, i), value: r.cells[o.column]?.value ?? '0' }])),
-          skippedRows: result.rows.length - filled, total: total.total, totalUnit: total.unit,
-        };
-        const memory: MemoryDto = { method: 'SHEET', expression: col.expression ?? null, inputs: [], substituted: null, resultBase: total.base, resultBaseUnit: baseUnitSymbol(total.dim), result: quantity, unit: target.symbol, formula: null, sheet: sheetMemory };
-        plans.push({ key: o.key, label: o.label, wbsNodeId: s.wbsNodeId, serviceId, anchor, quantity, unitId: target.id, memory });
+      for (const [gk, g] of groups) {
+        const subset = g.idx.map((i) => rows[i]!);
+        const gres = groups.size === 1 ? result : computeSheet(compiled, subset, params);
+        const rowIdx = groups.size === 1 ? result.rows.map((_, i) => i) : g.idx;
+        const destination = groups.size > 1 ? anchorLabel(g.anchor, ctx).label : null;
+        for (const o of def.outputs) {
+          const serviceId = outputMap[o.key] ?? null;
+          if (!serviceId) continue;
+          const { service, target } = await this.measurements.serviceWithUnit(tx, actor.organizationId, projectId, serviceId);
+          if (service.archivedAt) throw invalid(`O serviço ${service.code} está arquivado.`, `outputMap.${o.key}`);
+          const total = gres.totals.find((t) => t.key === o.key)!;
+          const quantity = outputInUnit(total, target);
+          if (quantity === null) throw invalid(`A saída "${o.label}" está em ${total.unit}, mas o serviço ${service.code} é medido em ${target.symbol}.`, `outputMap.${o.key}`);
+          if (/^-?0(\.0+)?$/.test(quantity)) continue;
+          const col = def.columns.find((c) => c.key === o.column)!;
+          const sheetMemory: SheetMemoryDto = {
+            sheetId: s.id, title: s.title, destination,
+            template: { code: s.templateVersion.template.code, name: s.templateVersion.template.name, versionNumber: s.templateVersion.number },
+            output: { key: o.key, label: o.label }, column: { key: col.key, label: col.label, expression: col.expression ?? null },
+            params: params_,
+            rows: gres.rows.flatMap((r, j) => { const i = rowIdx[j]!; return r.blank ? [] : [{ index: i + 1, label: rowLabel(def, rows[i]!, i), value: r.cells[o.column]?.value ?? '0' }]; }),
+            skippedRows: groups.size === 1 ? result.rows.length - filled : 0, total: total.total, totalUnit: total.unit,
+          };
+          const memory: MemoryDto = { method: 'SHEET', expression: col.expression ?? null, inputs: [], substituted: null, resultBase: total.base, resultBaseUnit: baseUnitSymbol(total.dim), result: quantity, unit: target.symbol, formula: null, sheet: sheetMemory };
+          plans.push({ key: g.isDefault ? o.key : `${o.key}@${gk}`, label: destination ? `${o.label} — ${destination}` : o.label, wbsNodeId: s.wbsNodeId, serviceId, anchor: g.anchor, quantity, unitId: target.id, memory });
+        }
       }
       const out: SheetLaunchResultDto = await syncOwnedMeasurements(tx, actor, projectId,
-        { kind: 'sheet', id: s.id, title: s.title, sourceReference: s.sourceReference, documentId: s.documentId, inputs: { sheetId: s.id, templateVersionId: s.templateVersionId, params, rows: s.rows } as Prisma.InputJsonValue },
+        { kind: 'sheet', id: s.id, title: s.title, sourceReference: s.sourceReference, documentId: s.documentId, inputs: { sheetId: s.id, templateVersionId: s.templateVersionId, params, rows: s.rows, rowAnchors: s.rowAnchors } as Prisma.InputJsonValue },
         plans, { ctx, measurements: this.measurements, audit: this.audit, reason: (reason ?? '').trim() || `Relançamento da ficha "${s.title}"`, fingerprint: contribution });
       const done = await tx.sheet.updateMany({ where: { id, version }, data: { launchedAt: new Date(), launchedHash: contentHash(s), version: { increment: 1 } } });
       if (done.count === 0) throw versionConflict();
@@ -285,7 +320,8 @@ export class SheetsService {
 
   async detail(organizationId: string, projectId: string, id: string): Promise<SheetDetailDto> {
     const s = await this.sheet(this.prisma, organizationId, projectId, id);
-    const [item] = await this.items(organizationId, projectId, [s], await loadContext(this.prisma, projectId));
+    const ctx = await loadContext(this.prisma, projectId);
+    const [item] = await this.items(organizationId, projectId, [s], ctx);
     const [newest, ms, units, docs] = await Promise.all([
       this.prisma.sheetTemplateVersion.findFirst({ where: { templateId: s.templateVersion.templateId, status: 'PUBLISHED' }, orderBy: { number: 'desc' }, select: { id: true, number: true } }),
       this.prisma.measurement.findMany({ where: { sheetId: id, projectId }, include: { service: { select: { code: true, description: true, unit: { select: { symbol: true } } } } }, orderBy: [{ archivedAt: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }] }),
@@ -296,7 +332,10 @@ export class SheetsService {
       ...item!, templateVersionId: s.templateVersionId, definition: s.templateVersion.definition as unknown as SheetDefInput,
       newerVersion: newest && newest.number > s.templateVersion.number ? newest : null,
       anchor: toAnchorInput(anchorOf(s)), params: s.params as Record<string, string>, outputMap: s.outputMap as Record<string, string | null>,
-      rows: s.rows as SheetDetailDto['rows'], sourceReference: s.sourceReference, document: s.documentId ? docs.get(s.documentId) ?? null : null,
+      rows: s.rows as SheetDetailDto['rows'],
+      rowAnchors: (s.rows as unknown[]).map((_, i) => (s.rowAnchors as (AnchorInput | null)[])[i] ?? null),
+      rowAnchorLabels: (s.rows as unknown[]).map((_, i) => { const a = (s.rowAnchors as (AnchorInput | null)[])[i]; return a ? anchorLabel(this.measurements.anchorFields(a), ctx).label : null; }),
+      sourceReference: s.sourceReference, document: s.documentId ? docs.get(s.documentId) ?? null : null,
       measurements: ms.map((m) => ({ outputKey: m.sheetOutputKey!, measurementId: m.id, serviceId: m.serviceId, serviceCode: m.service.code, serviceDescription: m.service.description, quantity: m.quantity.toString(), unit: m.service.unit.symbol, revision: m.currentNumber, archived: !!m.archivedAt })),
       units: units.map((u) => ({ symbol: u.symbol, dimension: u.dimension, factor: u.factor })),
     };

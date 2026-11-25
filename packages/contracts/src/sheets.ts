@@ -58,6 +58,8 @@ export const updateSheetSchema = z.object({
   params: z.record(key, num).optional(),
   outputMap: z.record(key, z.uuid().nullable()).optional(),
   rows: sheetRowsSchema.optional(),
+  /** Destino próprio de cada linha (alinhado com `rows`; null = destino da ficha). Enviar junto com `rows`. */
+  rowAnchors: z.array(anchorSchema.nullable()).max(2000).optional(),
   sourceReference: optionalText(300),
   documentId: z.uuid().nullable().optional(),
 });
@@ -135,6 +137,9 @@ export interface SheetDetailDto extends SheetListItemDto {
   params: Record<string, string>;
   outputMap: Record<string, string | null>;
   rows: Record<string, { v?: string | null; ref?: string | null }>[];
+  /** Destino próprio de cada linha (null = destino da ficha) e seu rótulo. */
+  rowAnchors: (AnchorInput | null)[];
+  rowAnchorLabels: (string | null)[];
   sourceReference: string | null;
   document: { id: string; fileName: string; kind: string; size: number } | null;
   measurements: SheetMeasurementDto[];
@@ -154,6 +159,8 @@ export interface SheetLaunchResultDto {
 export interface SheetMemoryDto {
   sheetId: string;
   title: string;
+  /** Destino das linhas desta medição, quando a ficha tem destino por linha. */
+  destination?: string | null;
   template: { code: string; name: string; versionNumber: number };
   output: { key: string; label: string };
   column: { key: string; label: string; expression: string | null };

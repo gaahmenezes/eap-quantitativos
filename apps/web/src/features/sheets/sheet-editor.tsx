@@ -9,6 +9,7 @@ import { ArchiveButton, useAction } from '../../components/ui/actions';
 import { Button } from '../../components/ui/button';
 import { ErrorState, Loading, Notice } from '../../components/ui/feedback';
 import { SelectField, TextField } from '../../components/ui/field';
+import { SidePanel } from '../../components/ui/panel';
 import { api, errorMessage } from '../../lib/api';
 import { fmtDateTime, fmtQty } from '../../lib/format';
 import { useSession } from '../auth/session';
@@ -18,6 +19,12 @@ import { useProject } from '../projects/api';
 import { sheetKeys, STATUS_LABEL, STATUS_TONE, useSheet } from './api';
 
 type Row = SheetDetailDto['rows'][number];
+/** Destino próprio da linha guardado junto da linha (chave reservada, não é coluna do modelo). */
+const DEST = '__dest';
+type Dest = { anchor: AnchorInput; label: string };
+const destOf = (r: Row) => (r as unknown as Record<string, Dest | undefined>)[DEST] ?? null;
+const withDest = (r: Row, d: Dest | null): Row => { const { [DEST]: _old, ...rest } = r as Record<string, unknown>; return (d ? { ...rest, [DEST]: d } : rest) as Row; };
+const plainRow = (r: Row): Row => withDest(r, null);
 const blankRows = (n: number): Row[] => Array.from({ length: n }, () => ({}));
 /** "1.234,56" colado de planilha em pt-BR vira "1234,56". */
 const normalizePasted = (v: string) => (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(v.trim()) ? v.trim().replace(/\./g, '') : v.trim());
@@ -56,7 +63,7 @@ interface EditorProps {
 
 function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunched }: EditorProps) {
   const def = s.definition as SheetDef;
-  const initial = useMemo(() => ({ title: s.title, rows: s.rows.length ? s.rows : blankRows(3), params: s.params, outputMap: s.outputMap, wbsNodeId: s.wbsNodeId, anchor: s.anchor, sourceReference: s.sourceReference ?? '' }), [s]);
+  const initial = useMemo(() => ({ title: s.title, rows: s.rows.length ? s.rows.map((r, i) => withDest(r, s.rowAnchors[i] ? { anchor: s.rowAnchors[i]!, label: s.rowAnchorLabels[i] ?? '' } : null)) : blankRows(3), params: s.params, outputMap: s.outputMap, wbsNodeId: s.wbsNodeId, anchor: s.anchor, sourceReference: s.sourceReference ?? '' }), [s]);
   const [draft, setDraft] = useState(initial);
   const [anchorLabel, setAnchorLabel] = useState(s.anchorLabel);
   const [pickAnchor, setPickAnchor] = useState(false);
@@ -64,7 +71,8 @@ function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunc
   const act = useAction([sheetKeys.all(projectId), mKeys.all(projectId)]);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   const compiled = useMemo(() => compileSheet(def, s.units), [def, s.units]);
-  const result = useMemo(() => computeSheet(compiled, draft.rows as SheetRowInput[], draft.params), [compiled, draft.rows, draft.params]);
+  const result = useMemo(() => computeSheet(compiled, draft.rows.map(plainRow) as SheetRowInput[], draft.params), [compiled, draft.rows, draft.params]);
+  const [destRow, setDestRow] = useState<number | null>(null);
   const inputCols = def.columns.filter((c) => c.kind === 'input');
   const unitDim = new Map(s.units.map((u) => [u.symbol, u.dimension]));
   const items = (wbs?.nodes ?? []).filter((n) => n.nodeType === 'ITEM' && n.status === 'ACTIVE');
@@ -75,7 +83,8 @@ function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunc
   const focus = (r: number, c: number) => requestAnimationFrame(() => (document.querySelector(`[data-cell="${r}:${c}"]`) as HTMLInputElement | null)?.focus());
 
   const save = async () => {
-    const body = { title: draft.title, rows: draft.rows, params: draft.params, outputMap: draft.outputMap, wbsNodeId: draft.wbsNodeId, anchor: draft.anchor, sourceReference: draft.sourceReference || null };
+    const rowAnchors = draft.rows.map((r) => destOf(r)?.anchor ?? null);
+    const body = { title: draft.title, rows: draft.rows.map(plainRow), ...(rowAnchors.some(Boolean) || s.rowAnchors.some(Boolean) ? { rowAnchors } : {}), params: draft.params, outputMap: draft.outputMap, wbsNodeId: draft.wbsNodeId, anchor: draft.anchor, sourceReference: draft.sourceReference || null };
     return act.run(() => api('PATCH', `/projects/${projectId}/sheets/${s.id}`, { body, version: s.version }));
   };
   const launch = async () => {
@@ -127,7 +136,7 @@ function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunc
 
   const errorRows = result.rows.map((r, i) => ({ i, errors: r.errors })).filter((x) => x.errors.length);
   const filled = result.rows.filter((r) => !r.blank).length;
-  const ready = !!draft.wbsNodeId && !!draft.anchor && filled > 0 && errorRows.length === 0 && compiled.issues.length === 0 && Object.values(draft.outputMap).some(Boolean);
+  const ready = !!draft.wbsNodeId && (!!draft.anchor || draft.rows.every((x, i) => result.rows[i]?.blank || !!destOf(x))) && filled > 0 && errorRows.length === 0 && compiled.issues.length === 0 && Object.values(draft.outputMap).some(Boolean);
   const cellBase = 'h-8 w-full min-w-[84px] border-0 bg-transparent px-2 text-[13px] focus:bg-cyan-wash focus:outline-2 focus:outline-signal';
 
   return (
@@ -173,6 +182,7 @@ function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunc
                       {c.unit && <span className="block font-mono font-normal text-muted">{c.unit}</span>}
                     </th>
                   ))}
+                  <th className="border-b border-l border-line px-2 py-1 font-medium">Destino</th>
                   {canEdit && <th className="border-b border-l border-line px-2 py-1 font-normal text-muted"><span className="sr-only">Ações</span></th>}
                 </tr>
               </thead>
@@ -203,6 +213,12 @@ function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunc
                           </td>
                         );
                       })}
+                      <td className="border-l border-line px-1">
+                        <button type="button" disabled={!canEdit} aria-label={`Destino da linha ${r + 1}`} onClick={() => setDestRow(r)}
+                          className={`max-w-[180px] truncate text-left text-[12px] ${destOf(row) ? 'text-cyan-ink' : 'text-muted'} hover:underline disabled:no-underline`} title={destOf(row)?.label}>
+                          {destOf(row)?.label || 'da ficha'}
+                        </button>
+                      </td>
                       {canEdit && (
                         <td className="whitespace-nowrap border-l border-line px-1">
                           <button type="button" className="px-1 text-muted hover:text-ink" aria-label={`Duplicar linha ${r + 1}`} title="Duplicar" onClick={() => setRows((rows) => [...rows.slice(0, r + 1), structuredClone(rows[r]!), ...rows.slice(r + 1)])}>⧉</button>
@@ -220,6 +236,7 @@ function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunc
                     const t = result.totals.find((x) => x.column === c.key);
                     return <td key={c.key} className="border-l border-line px-2 py-1.5 text-right font-mono">{t ? fmtQty(t.total) : ''}</td>;
                   })}
+                  <td />
                   {canEdit && <td />}
                 </tr>
               </tfoot>
@@ -309,6 +326,19 @@ function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunc
         </aside>
       </div>
 
+      <SidePanel open={destRow !== null} title={destRow !== null ? `Destino da linha ${destRow + 1}` : 'Destino'} onClose={() => setDestRow(null)}>
+        {destRow !== null && (
+          <div className="flex flex-col gap-3">
+            <p className="text-[13px] text-muted">A linha lança na âncora escolhida aqui (ex.: um trecho, um pavimento, um ambiente da tipologia), no mesmo item da EAP da ficha. Sem destino próprio, vale o destino da ficha.</p>
+            <AnchorPicker projectId={projectId} value={destOf(draft.rows[destRow]!)?.anchor ?? null}
+              onChange={(a) => setRows((rows) => rows.map((x, i) => (i === destRow ? withDest(x, a ? { anchor: a, label: 'novo destino (salve para confirmar)' } : null) : x)))} />
+            <div className="flex gap-2">
+              <Button variant="primary" onClick={() => setDestRow(null)}>Aplicar</Button>
+              <Button variant="ghost" onClick={() => { setRows((rows) => rows.map((x, i) => (i === destRow ? withDest(x, null) : x))); setDestRow(null); }}>Usar destino da ficha</Button>
+            </div>
+          </div>
+        )}
+      </SidePanel>
       {s.measurements.length > 0 && (
         <section aria-label="Quantitativos lançados" className="mt-6 border border-line bg-sheet">
           <h2 className="px-3 py-2 font-medium">Quantitativos lançados</h2>

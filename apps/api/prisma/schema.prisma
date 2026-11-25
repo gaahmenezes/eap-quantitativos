@@ -1063,7 +1063,7 @@ model Measurement {
   dwellingUnitId    String?               @db.Uuid
   /// Ficha de levantamento que gerou a medição (F10) e a saída correspondente.
   sheetId           String?               @db.Uuid
-  sheetOutputKey    String?               @db.VarChar(30)
+  sheetOutputKey    String?               @db.VarChar(64)
   /// Quadro de componentes que gerou a medição (F11) e a chave "serviço:destino".
   scheduleId        String?               @db.Uuid
   scheduleKey       String?               @db.VarChar(80)
@@ -1416,6 +1416,8 @@ model Sheet {
   outputMap         Json                   @default("{}")
   /// Linhas: [{ coluna: { v, ref } }].
   rows              Json                   @default("[]")
+  /// Destino próprio de cada linha (âncora; null = destino da ficha), alinhado com `rows` (F13).
+  rowAnchors        Json                   @default("[]")
   sourceReference   String?                @db.VarChar(300)
   documentId        String?                @db.Uuid
   /// Impressão digital do conteúdo no último lançamento (detecta alterações pendentes).
