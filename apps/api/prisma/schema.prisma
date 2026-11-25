@@ -1072,7 +1072,7 @@ model Measurement {
   revisions       MeasurementRevision[]
 
   @@unique([id, projectId])
-  @@unique([sheetId, sheetOutputKey])
+  @@index([sheetId])
   @@index([projectId, wbsNodeId, serviceId])
   @@map("measurement")
 }

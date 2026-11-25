@@ -11,6 +11,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { CatalogService } from '../catalog/catalog.service.js';
 import { LibraryService } from '../library/library.service.js';
 import { FormulasService } from '../formulas/formulas.service.js';
+import { SheetTemplatesService } from '../sheets/sheet-templates.service.js';
 import { WbsTemplatesService } from '../wbs-templates/wbs-templates.service.js';
 import { burnVerify, hashPassword, verifyPassword } from './password.js';
 
@@ -36,6 +37,7 @@ export class AuthService {
     private readonly library: LibraryService,
     private readonly wbsTemplates: WbsTemplatesService,
     private readonly formulas: FormulasService,
+    private readonly sheetTemplates: SheetTemplatesService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -55,6 +57,7 @@ export class AuthService {
       await this.library.ensureLibrary(tx, org.id);
       await this.wbsTemplates.ensureDefaults(tx, org.id);
       await this.formulas.ensureDefaults(tx, org.id);
+      await this.sheetTemplates.ensureDefaults(tx, org.id);
       const actor = { userId: user.id, organizationId: org.id, requestId: meta.requestId };
       await this.audit.record(tx, actor, {
         entityType: 'Organization',

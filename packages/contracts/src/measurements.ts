@@ -114,7 +114,9 @@ export const listRevisionsQuery = z.object({
 });
 
 export interface MemoryDto {
-  method: 'MANUAL' | 'FORMULA' | 'IMPORTED';
+  method: 'MANUAL' | 'FORMULA' | 'IMPORTED' | 'SHEET';
+  /** Medição lançada por ficha de levantamento (F10). */
+  sheet?: import('./sheets.js').SheetMemoryDto | null;
   import?: { jobId: string; fileName: string; row: number } | null;
   expression: string | null;
   inputs: { symbol: string; label: string; value: string; unit: string; baseValue: string; baseUnit: string }[];
@@ -135,7 +137,7 @@ export interface CalcPreviewDto {
 export interface MeasurementRevisionDto {
   id: string;
   number: number;
-  method: 'MANUAL' | 'FORMULA' | 'IMPORTED';
+  method: 'MANUAL' | 'FORMULA' | 'IMPORTED' | 'SHEET';
   formulaVersionId: string | null;
   inputs: unknown;
   document: { id: string; fileName: string; kind: string; size: number } | null;
@@ -168,6 +170,8 @@ export interface MeasurementDto {
   current: MeasurementRevisionDto;
   /** Existe versão publicada mais nova da fórmula usada. */
   formulaOutdated: { latestVersionId: string; latestNumber: number } | null;
+  /** Ficha de levantamento que gerou a medição: revisões só pela ficha. */
+  sheet: { id: string; title: string; outputKey: string } | null;
   archivedAt: string | null;
   archiveReason: string | null;
   version: number;

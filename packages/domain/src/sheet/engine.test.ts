@@ -146,6 +146,13 @@ describe('células numéricas', () => {
     expect(r.rows[0]!.errors[0]).toMatch(/Comprimento: Valor inválido/);
     expect(total(r, 'area')).toBe('0');
   });
+  it('linha em branco é ignorada (sem erro de obrigatório)', () => {
+    const r = run(tpl('TELHADO'), [row({}), row({ pano: '', comprimento: ' ' }), row({ pano: 'P', comprimento: '2', largura: '3' })]);
+    expect(r.rows[0]!.blank).toBe(true);
+    expect(r.rows[1]!.blank).toBe(true);
+    expect(r.errorCount).toBe(0);
+    expect(total(r, 'area')).toBe('6');
+  });
   it('determinístico e exato em decimal (0,1 + 0,2)', () => {
     const r = run(tpl('TELHADO'), [row({ pano: 'P', comprimento: '0,1+0,2', largura: '1' })]);
     expect(total(r, 'area')).toBe('0.3');

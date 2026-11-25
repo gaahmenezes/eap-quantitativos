@@ -28,8 +28,10 @@ import { anchorLabel, coverageOf, expandUnits, loadContext, replacementKeys, typ
 
 const TX = { timeout: 30_000 } as const;
 /** Mesmo lock da EAP: medições e regeneração da EAP do empreendimento não correm em paralelo. */
-const lock = (tx: Tx, projectId: string) => tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`wbs:${projectId}`}, 0))`;
-const invalid = (detail: string, path = 'anchor') => new AppError(422, 'VALIDATION_FAILED', 'Dados inválidos', detail, [{ path, message: detail }]);
+export const lock = (tx: Tx, projectId: string) => tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`wbs:${projectId}`}, 0))`;
+export const invalid = (detail: string, path = 'anchor') => new AppError(422, 'VALIDATION_FAILED', 'Dados inválidos', detail, [{ path, message: detail }]);
+
+const sheetOwned = () => conflict('SHEET_OWNED', 'Esta medição é gerada por uma ficha de levantamento. Altere a ficha e lance os quantitativos novamente.');
 
 type Row = Measurement & { revisions: MeasurementRevision[] };
 
@@ -68,7 +70,7 @@ export class MeasurementsService {
     }
   }
 
-  private async serviceWithUnit(tx: Tx, organizationId: string, projectId: string, serviceId: string) {
+  async serviceWithUnit(tx: Tx, organizationId: string, projectId: string, serviceId: string) {
     const s = await tx.service.findFirst({ where: { id: serviceId, organizationId, OR: [{ projectId: null }, { projectId }] }, include: { unit: true } });
     if (!s) throw notFound('Serviço');
     const units = await loadUnits(tx, organizationId);
@@ -82,7 +84,7 @@ export class MeasurementsService {
   }
 
   // ---------- âncoras ----------
-  private anchorFields(a: AnchorInput): AnchorFields {
+  anchorFields(a: AnchorInput): AnchorFields {
     const base: AnchorFields = { anchorKind: a.kind, structureNodeId: null, networkSegmentId: null, networkNodeId: null, physicalElementId: null, typologyId: null, elementKey: null, dwellingUnitId: null };
     switch (a.kind) {
       case 'STRUCTURE_NODE': return { ...base, structureNodeId: a.id };
@@ -93,7 +95,7 @@ export class MeasurementsService {
     }
   }
 
-  private async checkAnchor(tx: Tx, projectId: string, f: AnchorFields, ctx: MeasurementCtx) {
+  async checkAnchor(tx: Tx, projectId: string, f: AnchorFields, ctx: MeasurementCtx) {
     const archived = (x: { archivedAt: Date | null } | undefined, what: string) => {
       if (!x) throw notFound(what);
       if (x.archivedAt) throw invalid(`${what} está arquivado(a).`);
@@ -126,7 +128,7 @@ export class MeasurementsService {
   }
 
   /** RN-DUP: nenhuma sobreposição de âncoras entre medições ativas do mesmo item da EAP e serviço. */
-  private async checkOverlap(tx: Tx, projectId: string, wbsNodeId: string, serviceId: string, f: AnchorFields, ctx: MeasurementCtx, ignoreId?: string) {
+  async checkOverlap(tx: Tx, projectId: string, wbsNodeId: string, serviceId: string, f: AnchorFields, ctx: MeasurementCtx, ignoreId?: string) {
     const others = (await tx.measurement.findMany({ where: { projectId, wbsNodeId, serviceId, archivedAt: null } })).filter((m) => m.id !== ignoreId);
     const repl = replacementKeys([...others, f]);
     const candidate = coverageOf(f, ctx, repl);
@@ -141,7 +143,7 @@ export class MeasurementsService {
     }
   }
 
-  private async checkWbsService(tx: Tx, organizationId: string, projectId: string, wbsNodeId: string, serviceId: string) {
+  async checkWbsService(tx: Tx, organizationId: string, projectId: string, wbsNodeId: string, serviceId: string) {
     const node = await tx.wbsNode.findFirst({ where: { id: wbsNodeId, projectId, organizationId } });
     if (!node) throw notFound('Item da EAP');
     if (node.archivedAt) throw invalid('O item da EAP está arquivado.', 'wbsNodeId');
@@ -172,7 +174,7 @@ export class MeasurementsService {
     }, TX);
   }
 
-  private async checkDocument(tx: Tx, organizationId: string, projectId: string, documentId?: string | null) {
+  async checkDocument(tx: Tx, organizationId: string, projectId: string, documentId?: string | null) {
     if (!documentId) return;
     const d = await tx.document.findFirst({ where: { id: documentId, organizationId, projectId } });
     if (!d) throw notFound('Documento');
@@ -195,6 +197,7 @@ export class MeasurementsService {
       const m = await tx.measurement.findFirst({ where: { id, projectId, organizationId: actor.organizationId } });
       if (!m) throw notFound('Medição');
       if (m.archivedAt) throw conflict('ARCHIVED', 'Medição arquivada não pode ser revisada. Restaure-a antes.');
+      if (m.sheetId) throw sheetOwned();
       const { target, units } = await this.serviceWithUnit(tx, actor.organizationId, projectId, m.serviceId);
       await this.checkDocument(tx, actor.organizationId, projectId, input.documentId);
       const c = await this.compute(tx, actor.organizationId, target, input.calc, units);
@@ -211,6 +214,7 @@ export class MeasurementsService {
       await lock(tx, projectId);
       const m = await tx.measurement.findFirst({ where: { id, projectId, organizationId: actor.organizationId } });
       if (!m) throw notFound('Medição');
+      if (m.sheetId) throw sheetOwned();
       if (!archived) {
         if (!m.archivedAt) return;
         await this.checkWbsService(tx, actor.organizationId, projectId, m.wbsNodeId, m.serviceId);
@@ -242,6 +246,8 @@ export class MeasurementsService {
     const svcById = new Map(services.map((s) => [s.id, s]));
     const userById = new Map(users.map((u) => [u.id, u.name]));
     const versionFormula = await this.versionFormulaIds(rows);
+    const sheetIds = [...new Set(rows.map((r) => r.sheetId).filter((x): x is string => !!x))];
+    const sheetTitle = new Map(sheetIds.length ? (await this.prisma.sheet.findMany({ where: { id: { in: sheetIds } }, select: { id: true, title: true } })).map((x) => [x.id, x.title]) : []);
     const revDto = (v: MeasurementRevision): MeasurementRevisionDto => ({
       id: v.id, number: v.number, method: v.method, formulaVersionId: v.formulaVersionId, inputs: v.inputs, memory: v.memory as unknown as MemoryDto,
       quantity: v.quantity.toString(), unit: unitSym.get(v.unitId) ?? '', sourceReference: v.sourceReference, notes: v.notes, reason: v.reason,
@@ -262,6 +268,7 @@ export class MeasurementsService {
         warnings: expanded.warnings.filter((w) => w.measurementId === m.id).map((w) => w.message),
         current: revDto(current),
         formulaOutdated: fv && newest && newest.number > fv.number ? { latestVersionId: newest.id, latestNumber: newest.number } : null,
+        sheet: m.sheetId ? { id: m.sheetId, title: sheetTitle.get(m.sheetId) ?? '', outputKey: m.sheetOutputKey! } : null,
         archivedAt: m.archivedAt?.toISOString() ?? null, archiveReason: m.archiveReason, version: m.version,
         revisions: m.revisions.sort((x, y) => y.number - x.number).map(revDto),
       };

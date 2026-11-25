@@ -282,7 +282,7 @@ export interface SheetCell { v?: string | null; ref?: string | null }
 export type SheetRowInput = Record<string, SheetCell | undefined>;
 
 export interface CellResult { value: string | null; display: string; error?: string; expr?: string; ref?: string | null }
-export interface RowResult { cells: Record<string, CellResult>; errors: string[] }
+export interface RowResult { cells: Record<string, CellResult>; errors: string[]; /** Linha sem nenhum valor digitado: ignorada. */ blank?: boolean }
 export interface OutputTotal { key: string; label: string; column: string; unit: string; total: string; base: string; dim: Dimension }
 export interface SheetResult { rows: RowResult[]; totals: OutputTotal[]; errorCount: number; issues: SheetIssue[] }
 
@@ -383,6 +383,14 @@ function evalAst(ast: Ast, env: Map<string, Val>, c: CompiledSheet): Val {
   }
 }
 
+export const isBlankRow = (row: SheetRowInput) => Object.values(row).every((c) => !(c?.v ?? '').trim());
+
+/** Rótulo da linha para a memória de cálculo: textos digitados (ex.: ambiente, trecho). */
+export function rowLabel(def: SheetDef, row: SheetRowInput, index: number): string {
+  const parts = def.columns.filter((c) => c.kind === 'input' && c.type !== 'number').map((c) => (row[c.key]?.v ?? '').trim()).filter(Boolean).slice(0, 2);
+  return parts.length ? parts.join(' · ') : `Linha ${index + 1}`;
+}
+
 /** Calcula todas as linhas e os totais das saídas. `paramValues` substitui os valores padrão dos parâmetros. */
 export function computeSheet(c: CompiledSheet, rows: readonly SheetRowInput[], paramValues: Record<string, string> = {}): SheetResult {
   const base = new Map<string, Val>();
@@ -395,6 +403,7 @@ export function computeSheet(c: CompiledSheet, rows: readonly SheetRowInput[], p
   const sums = new Map<string, Decimal>();
   let errorCount = 0;
   const results: RowResult[] = rows.map((row) => {
+    if (isBlankRow(row)) return { cells: {}, errors: [], blank: true };
     const env = new Map(base);
     const cells: Record<string, CellResult> = {};
     const errors: string[] = [];

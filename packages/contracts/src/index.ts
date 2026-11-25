@@ -11,3 +11,4 @@ export * from './measurements.js';
 export * from './consolidation.js';
 export * from './revisions.js';
 export * from './io.js';
+export * from './sheets.js';

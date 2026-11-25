@@ -20,6 +20,7 @@ import { LibraryModule } from './modules/library/library.module.js';
 import { WbsTemplatesModule } from './modules/wbs-templates/wbs-templates.module.js';
 import { WbsModule } from './modules/wbs/wbs.module.js';
 import { FormulasModule } from './modules/formulas/formulas.module.js';
+import { SheetsModule } from './modules/sheets/sheets.module.js';
 import { MeasurementsModule } from './modules/measurements/measurements.module.js';
 import { ConsolidationModule } from './modules/consolidation/consolidation.module.js';
 import { RevisionsModule } from './modules/revisions/revisions.module.js';
@@ -72,6 +73,7 @@ export class AppModule implements NestModule {
         WbsModule,
         FormulasModule,
         MeasurementsModule,
+        SheetsModule,
         ConsolidationModule,
         RevisionsModule,
         DocumentsModule,
