@@ -36,6 +36,7 @@ const PROJECT: NavItem[] = [
   { label: 'Consolidações', projectPath: 'consolidacoes' },
   { label: 'Revisões', projectPath: 'revisoes' },
   { label: 'Importações', projectPath: 'importacoes' },
+  { label: 'Migração de planilhas', projectPath: 'migracao' },
 ];
 
 function Item({ item: raw, projectId }: { item: NavItem; projectId?: string }) {

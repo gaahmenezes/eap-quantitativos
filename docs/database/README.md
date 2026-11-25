@@ -116,3 +116,9 @@ Também: `measurement.sheetId` + `sheetOutputKey` (origem da medição; imutáve
 | `schedule_row_service` | Serviços do item (ordem) | FK de serviço por organização |
 
 Também: `measurement.scheduleId` + `scheduleKey` (imutáveis por trigger; uma medição **ativa** por chave — índice parcial; origem única: ficha **ou** quadro — CHECK) e o método `SCHEDULE`.
+
+## Tabelas (F12 — migração de planilhas)
+| Tabela | Conteúdo | Regras no banco |
+|---|---|---|
+| `workbook_import` | Migração: documento XLSX de origem, plano por aba (JSONB), relatório da aplicação, situação | FK composta para empreendimento e documento; não é apagada; aplicada/cancelada não muda (trigger) |
+| `workbook_import_sheet` | Extrato de cada aba: valores e texto das fórmulas (JSONB), linhas, colunas, truncada | FK composta por organização; **imutável** (trigger) |

@@ -279,7 +279,11 @@ argon2id; cookie de sessão `__Host-` httpOnly/Secure/SameSite=Lax com rotação
 **Entregáveis:** quadros (esquadrias, louças e metais, materiais de instalações) com itens × destinos, L × A, lista padrão e lançamento do quadro de resumo em medições (ADR-021).
 **Aceite:** valores das planilhas reproduzidos (ex.: esquadrias 13,1 m²/casa × 362 = 4.742,2 m²); itens do mesmo material somam numa medição por destino; sem dupla contagem; isolamento por organização.
 
-### F12 — Migração das planilhas · F13 — Centro operacional · F14 — Integração com a outra plataforma
+### F12 — Migração das planilhas
+**Entregáveis:** envio do XLSX, extrato por aba, plano sugerido (destino, cabeçalho, colunas, unidades), conferência linha a linha contra a planilha e criação de fichas e quadros (ADR-022).
+**Aceite:** nenhuma fórmula executada; abas reais reproduzidas com conferência (ex.: Cerâmica MAT 92,44158 m²); plano com problema não grava nada; isolamento por organização.
+
+### F13 — Centro operacional · F14 — Integração com a outra plataforma
 Escopo resumido em `docs/implementation/backlog.md`; detalhamento no início de cada fase.
 
 ### F15 — Qualidade e preparação para produção (antes F10)

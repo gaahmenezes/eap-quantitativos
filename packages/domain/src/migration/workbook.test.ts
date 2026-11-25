@@ -15,6 +15,8 @@ describe('extrato: células, cabeçalho e destino sugerido', () => {
     expect(cellInput({ v: '184.63', num: true, f: '29.11+53.35+61.48+18.15+22.54' })).toBe('29.11+53.35+61.48+18.15+22.54');
     expect(cellInput({ v: '0.392', num: true, f: '(1*2.6+1*0.8+2*0.8+1*0.6)*K6' })).toBe('0.392');
     expect(cellInput({ v: '  Sala  ' })).toBe('Sala');
+    expect(cellInput({ v: '0.05600000000000001', num: true, f: '1*0.8*K7' })).toBe('0.056');
+    expect(cellInput({ v: '25.181520000000003', num: true })).toBe('25.18152');
     expect(colLetter(0)).toBe('A'); expect(colLetter(25)).toBe('Z'); expect(colLetter(26)).toBe('AA');
   });
   it('linha de cabeçalho e rótulos (mesclados pela linha de cima)', () => {

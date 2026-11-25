@@ -34,6 +34,8 @@
 
 **RN‑IMP (importação)** — arquivo → staging (`ImportJob`, `ImportRow`) → mapeamento → validação (duplicados, obrigatórios, unidades, referências, disjunção) → prévia → confirmação → gravação em transação única → relatório. Nada é gravado em tabelas de domínio antes da confirmação.
 
+**RN‑MIG (migração de planilhas, ADR-022)** — planilha → extrato imutável por aba → plano (destino, linhas, mapeamento com unidade da coluna, conferências) → verificação (montagem + conferência linha a linha) → aplicação transacional que cria fichas/quadros com a origem de cada célula. Fórmulas nunca são executadas; nada é lançado em quantitativos na migração.
+
 **RN‑QDR (quadros de componentes, ADR-021)** — itens (Id, descrição, especificação, unidade, L × A, serviços) × destinos (item da EAP + âncora); quantidade do serviço = contagem, conversão de unidade ou contagem × L × A; lançar grava uma medição por serviço × destino (quadro de resumo) com a memória de cada item; medição de quadro só muda pelo quadro.
 
 **RN‑FIC (fichas de levantamento, ADR-020)** — ficha = modelo publicado (colunas digitadas e calculadas, parâmetros, tabelas de consulta, saídas) + linhas digitadas do projeto + destino (item da EAP + âncora) + serviço por saída. Lançar grava uma medição por saída (método Ficha) com a memória de cada linha; relançar só revisa o que mudou; linha com erro bloqueia o lançamento; medição de ficha só muda pela ficha; dupla contagem (RN‑DUP) vale normalmente.

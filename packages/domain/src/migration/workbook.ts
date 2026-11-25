@@ -25,8 +25,13 @@ export function cellInput(c: XCell | null | undefined): string {
     const expr = c.f.replace(/\s+/g, '');
     return expr;
   }
+  // número gravado pela planilha: tira o ruído de ponto flutuante (0,05600000000000001 → 0,056)
+  if (c.num && /^-?\d+(\.\d+)?(e-?\d+)?$/i.test(c.v)) return new D(c.v).toDecimalPlaces(10).toFixed();
   return c.v.trim();
 }
+
+/** A coluna tem algum número nas linhas de dados (para sugerir conferência só onde há valor). */
+export const hasNumbers = (s: XSheet, col: number, firstRow: number) => s.rows.slice(firstRow, firstRow + 60).some((r) => r[col]?.num);
 const cellNumber = (c: XCell | null | undefined): Decimal | null => {
   if (!c) return null;
   if (c.num) return new D(c.v);

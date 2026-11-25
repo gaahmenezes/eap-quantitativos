@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { WorkbookApplyResultDto, WorkbookImportDto, WorkbookImportListItemDto, WorkbookPreviewDto, WorkbookSheetDto, WorkbookSheetPlan } from '@eapq/contracts';
 import {
-  buildScheduleRows, buildSheetRows, compileSheet, detectDimensionPair, detectUnitColumn, headerLabels, reconcileSheet, suggestColumns, suggestHeaderRow, suggestTarget,
+  buildScheduleRows, buildSheetRows, compileSheet, detectDimensionPair, detectUnitColumn, hasNumbers, headerLabels, reconcileSheet, suggestColumns, suggestHeaderRow, suggestTarget,
   type SchedulePlanInput, type SheetDef, type SheetPlan, type XSheet,
 } from '@eapq/domain';
 import type { Actor } from '../../common/auth/auth-context.js';
@@ -62,7 +62,7 @@ export class WorkbooksService {
       for (const [k, col] of Object.entries(inputs)) map[k] = { col };
       const used = new Set(Object.values(map).map((m) => m.col));
       // conferência só com cabeçalho bem parecido (evita divergências falsas)
-      const calcs = suggestColumns(labels.map((l, i) => (used.has(i) ? '' : l)), tpl.def.columns.filter((c) => c.kind === 'calc'), 0.8);
+      const calcs = suggestColumns(labels.map((l, i) => (used.has(i) || !hasNumbers(s, i, headerRow + 1) ? '' : l)), tpl.def.columns.filter((c) => c.kind === 'calc'), 0.8);
       return { ...base, target: 'sheet', templateVersionId: tpl.versionId, map, checks: Object.fromEntries(Object.entries(calcs).map(([k, col]) => [k, { col }])), params: {} };
     }
     if (t.target === 'schedule') {

@@ -76,6 +76,12 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F11 | Lançamento em medições (método Quadro) com memória por item, revisão só no que mudou, arquivamento do que saiu, dupla contagem; mecanismo comum com as fichas | Concluída | `schedules.test.ts`, `sheets.test.ts` |
 | F11 | Tela de quadros: grade matricial, colar da planilha, seletor de serviço, quadro de resumo com total da obra, memória na tela de quantitativos | Concluída | E2E F11, revisão visual |
 | F11 | Isolamento (outra organização 404, leitor 403), quadro não apagado, arquivar arquiva quantitativos | Concluída | `schedules.test.ts` |
+| F12 | Extrato das abas (valores e fórmulas como texto, mescladas, limites), sem executar fórmulas | Concluída | `apps/api/test/workbooks.test.ts`; ensaio com as 3 planilhas reais |
+| F12 | Sugestões por aba: destino, cabeçalho, colunas por rótulo/sinônimo, unidade pelo conteúdo, par "L x A", conferência | Concluída | `packages/domain/src/migration/workbook.test.ts` |
+| F12 | Montagem de fichas e quadros: conta na célula preservada, unidade da coluna convertida, totais/títulos ignorados, origem por célula | Concluída | `workbook.test.ts`, `workbooks.test.ts` |
+| F12 | Conferência linha a linha contra a planilha (fichas pelo motor; quadros × repetições) | Concluída | `workbook.test.ts` (Cerâmica MAT, drenagem SMR I, hidráulica), E2E F12 |
+| F12 | Assistente por aba (pré-visualização, mapeamento, verificação), aplicação transacional e relatório; nada lançado em quantitativos; isolamento | Concluída | `workbooks.test.ts`, E2E F12 |
+| F12 | Modelo CER: revestimento paginado passa a usar peças × dimensões (divergência revelada pela conferência) | Concluída | `engine.test.ts` |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 137 · `apps/api` (integração, Postgres real): 161 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 14
+- `packages/domain`: 151 · `apps/api` (integração, Postgres real): 167 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 15

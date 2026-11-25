@@ -2,10 +2,17 @@
 
 ## Roteiro a partir da F10 (centro operacional de levantamento)
 - ~~F11 — Quadros de componentes e materiais~~ (concluída, ADR-021).
-- **F12 — Migração das planilhas**: importar planilhas existentes (Marupi, Viva Mais Barra, SMR I…) para fichas, com mapeamento por aba e conferência dos totais.
+- ~~F12 — Migração das planilhas~~ (concluída, ADR-022).
 - **F13 — Centro operacional**: painel por empreendimento (fichas pendentes de lançamento, cobertura da EAP, revisões), destino por linha nas fichas, fila de trabalho da equipe.
 - **F14 — Integração com a outra plataforma** (definir formato e autenticação com o usuário).
 - **F15 — Qualidade e produção** (itens abaixo, antes "F10").
+
+## Decisões da F12 a validar com o usuário
+- A migração cria fichas e quadros sem destino; o lançamento em quantitativos é feito depois, aba a aba.
+- Tolerância da conferência: 0,001 na unidade da coluna (ou 1 milionésimo do valor).
+- Linhas com "total"/"subtotal" ou fórmula SOMA/SUBTOTAL são ignoradas; títulos de grupo sem quantidade também.
+- Abas com dois blocos lado a lado (ex.: Telhado opção 01/02) são migradas um bloco por vez (limitando as colunas no mapeamento).
+- Avaliar: modelo de ficha para pintura/drywall com descontos por vão, e migração do mesmo arquivo para vários empreendimentos.
 
 ## Decisões da F11 a validar com o usuário
 - Lançamento soma por serviço × destino (quadro de resumo); o detalhe por item fica na memória de cálculo.
