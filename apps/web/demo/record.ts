@@ -4,14 +4,14 @@
  * Uso: API e web em execução (WEB_URL), depois `npx tsx demo/record.ts`.
  */
 import { createRequire } from 'node:module';
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { seed } from './seed.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright') as typeof import('playwright');
 const WEB = process.env['WEB_URL'] ?? 'http://localhost:5176';
 const OUT = process.env['OUT'] ?? new URL('../dist-demo/snapshot.json', import.meta.url).pathname;
-const READ_POSTS = [/\/consolidation$/, /\/consolidation\/lines$/];
+const READ_POSTS = [/\/consolidation$/, /\/consolidation\/lines$/, /\/workbook-imports\/[^/]+\/preview$/];
 
 const browser = await chromium.launch(process.env['PW_CHROMIUM_PATH'] ? { executablePath: process.env['PW_CHROMIUM_PATH'] } : {});
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -23,7 +23,8 @@ await page.getByLabel('Senha').fill('senha-demonstracao-segura-2026');
 await page.getByRole('button', { name: 'Criar organização' }).click();
 await page.getByRole('heading', { name: /Olá/ }).waitFor();
 console.info('semeando…');
-const ids = await seed(page);
+const FIX = new URL('../e2e/fixtures/levantamento-exemplo.xlsx', import.meta.url).pathname;
+const ids = await seed(page, existsSync(FIX) ? readFileSync(FIX) : undefined);
 console.info('projetos', ids);
 
 // ---- gravação: só leituras; qualquer alteração é bloqueada durante a navegação
@@ -69,9 +70,36 @@ await each(page.getByRole('navigation', { name: 'Templates' }).getByRole('button
 await visit('/formulas');
 await each(page.getByRole('navigation', { name: 'Fórmulas' }).getByRole('button'), 10, async (i) => click(page.getByRole('navigation', { name: 'Fórmulas' }).getByRole('button').nth(i)));
 
+await visit('/fichas');
+await each(page.getByRole('navigation', { name: 'Modelos de ficha' }).getByRole('button'), 12, async (i) => click(page.getByRole('navigation', { name: 'Modelos de ficha' }).getByRole('button').nth(i)));
+// busca Ctrl+K e seletor de empreendimento
+await page.keyboard.press('Control+k'); await settle(); await esc();
+
 for (const p of [ids.a, ids.b, ids.c]) {
   console.info('projeto', p);
   const base = `/empreendimentos/${p}`;
+  // F13: centro operacional e fila de trabalho
+  await visit(`${base}/painel`);
+  await click(page.getByRole('button', { name: /Empreendimento atual/ })); await esc();
+  await page.keyboard.press('Control+k'); await settle(); await esc();
+  await click(page.getByRole('button', { name: 'Nova tarefa' })); await esc();
+  // F10: fichas (lista e cada ficha, com o painel de destino por linha)
+  await visit(`${base}/fichas`);
+  const sheetLinks = await page.locator('main table a').evaluateAll((as) => as.map((x) => (x as HTMLAnchorElement).getAttribute('href')));
+  for (const h of sheetLinks) { if (!h) continue; await visit(h); await click(page.getByRole('button', { name: 'Destino da linha 1' })); await esc(); await click(page.getByRole('button', { name: 'Escolher âncora' })); }
+  // F11: quadros
+  await visit(`${base}/quadros`);
+  const schedLinks = await page.locator('main table a').evaluateAll((as) => as.map((x) => (x as HTMLAnchorElement).getAttribute('href')));
+  for (const h of schedLinks) { if (!h) continue; await visit(h); await click(page.getByRole('button', { name: /^Editar destino/ }).first()); await esc(); }
+  // F12: migrações (cada aba e a verificação)
+  await visit(`${base}/migracao`);
+  const wbLinks = await page.locator('main table a').evaluateAll((as) => as.map((x) => (x as HTMLAnchorElement).getAttribute('href')));
+  for (const h of wbLinks) {
+    if (!h) continue;
+    await visit(h);
+    const abas = page.getByRole('navigation', { name: 'Abas da planilha' }).getByRole('button');
+    await each(abas, 10, async (i) => { await click(abas.nth(i)); await click(page.getByRole('button', { name: 'Verificar aba' })); });
+  }
   await visit(base);
   await each(page.getByRole('tab'), 6, async (i) => click(page.getByRole('tab').nth(i)));
   await visit(`${base}/cadastro`);

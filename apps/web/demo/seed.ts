@@ -51,7 +51,7 @@ const item = (w: Any, title: string, path: string) => {
   return n;
 };
 
-export async function seed(page: Page) {
+export async function seed(page: Page, fixture?: Buffer) {
   const types = await call(page, 'GET', '/catalog/element-types');
   const T = (c: string) => types.find((t: Any) => t.code === c).id;
   const services = (await call(page, 'GET', '/catalog/services?limit=200')).items;
@@ -64,8 +64,9 @@ export async function seed(page: Page) {
   const a = (await call(page, 'POST', '/projects', { code: 'AUR-01', name: 'Residencial Aurora', classification: 'VERTICAL', description: 'Duas torres de 10 pavimentos, 4 apartamentos por andar, com áreas comuns e infraestrutura externa.', location: 'Campinas — SP' })).id;
   await call(page, 'POST', `/projects/${a}/structure/wizard/apply`, SCENARIO_A_VERTICAL);
   const typsA = await call(page, 'GET', `/projects/${a}/typologies`);
+  const keysA: Record<string, Record<string, string>> = {};
   for (const t of typsA) {
-    await typology(page, a, t.id, T, t.code === '2Q' ? [['Sala', '18.40'], ['Quarto 1', '9.20'], ['Quarto 2', '8.10'], ['Banheiro', '3.60']] : [['Sala', '22.80'], ['Suíte', '12.40'], ['Quarto 1', '9.20'], ['Quarto 2', '8.60'], ['Banheiro', '3.60']]);
+    keysA[t.code] = await typology(page, a, t.id, T, t.code === '2Q' ? [['Sala', '18.40'], ['Quarto 1', '9.20'], ['Quarto 2', '8.10'], ['Banheiro', '3.60']] : [['Sala', '22.80'], ['Suíte', '12.40'], ['Quarto 1', '9.20'], ['Quarto 2', '8.60'], ['Banheiro', '3.60']]);
     const s = await call(page, 'GET', `/projects/${a}/structure`);
     await call(page, 'POST', `/projects/${a}/typologies/${t.id}/propagation`, { unitIds: s.nodes.filter((n: Any) => n.kind === 'DWELLING_UNIT' && n.typologyId === t.id).map((n: Any) => n.id) });
   }
@@ -144,5 +145,112 @@ export async function seed(page: Page) {
   }
   for (const id of pv) await call(page, 'POST', `/projects/${c}/measurements`, { wbsNodeId: pvs.id, serviceId: S('DRE.003').id, anchor: { kind: 'NETWORK_NODE', id }, calc: manual('1', 'un'), sourceReference: 'DRN-02 rev. A' });
   await call(page, 'POST', `/projects/${c}/revisions`, { title: 'Projeto de drenagem' });
+
+  // ======================= F10–F13: fichas, quadros, migração e fila de trabalho
+  const sheetTpls = await call(page, 'GET', '/sheet-templates');
+  const TV = (code: string) => sheetTpls.find((t: Any) => t.code === code).versions.find((v: Any) => v.status === 'PUBLISHED').id;
+  const row = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { v }]));
+  async function sheet(p: string, tpl: string, title: string, wbsNodeId: string | null, patch: Record<string, unknown>, launch: boolean) {
+    const id = (await call(page, 'POST', `/projects/${p}/sheets`, { templateVersionId: TV(tpl), title, wbsNodeId })).id;
+    let d = await call(page, 'GET', `/projects/${p}/sheets/${id}`);
+    await call(page, 'PATCH', `/projects/${p}/sheets/${id}`, patch, d.version);
+    if (launch) { d = await call(page, 'GET', `/projects/${p}/sheets/${id}`); await call(page, 'POST', `/projects/${p}/sheets/${id}/launch`, {}, d.version); }
+    return id;
+  }
+
+  // C: segunda rede, lançada por uma ficha com destino por trecho
+  const net2 = (await call(page, 'POST', `/projects/${c}/infrastructure/systems/${dren}/networks`, { code: 'D-02', name: 'Rede da Rua das Palmeiras' })).id;
+  const pv2: string[] = [];
+  for (const [i, [tampa, fundo]] of [['97.900', '96.300'], ['97.500', '95.950'], ['97.050', '95.600'], ['96.700', '95.200']].entries())
+    pv2.push((await call(page, 'POST', `/projects/${c}/infrastructure/networks/${net2}/nodes`, { elementTypeId: T('PV-DREN'), code: `PV-1${i + 1}`, coverElevation: tampa, bottomElevation: fundo, locationNodeId: sections[(i + 1) % sections.length].id, attributes: { diametroInterno: '1.20', tipo: 'Concreto pré-moldado' } })).id);
+  const segs2: string[] = [];
+  const len2 = ['47.510', '39.920', '53.260'];
+  for (let i = 0; i < 3; i++) segs2.push((await call(page, 'POST', `/projects/${c}/infrastructure/networks/${net2}/segments`, { elementTypeId: T('TUBO-DREN'), code: `T-1${i + 1}`, fromNodeId: pv2[i], toNodeId: pv2[i + 1], length: len2[i], diameter: i < 2 ? '400' : '600', material: 'PEAD', streetSectionId: sections[(i + 1) % sections.length].id, attributes: { classe: 'PA-1' } })).id);
+  const rede = await sheet(c, 'REDE', 'Drenagem — Rua das Palmeiras (por trecho)', esc.id, {
+    rows: [
+      row({ trecho: 'PV-11 → PV-12', material: 'PEAD', dn: '400', comprimento: '29,11+18,40', inclinacao: '0,5', profundidade: '1,6' }),
+      row({ trecho: 'PV-12 → PV-13', material: 'PEAD', dn: '400', comprimento: '39,92', inclinacao: '0,5' }),
+      row({ trecho: 'PV-13 → PV-14', material: 'PEAD', dn: '600', comprimento: '53,26', inclinacao: '0,43', profundidade: '1,8' }),
+    ],
+    rowAnchors: segs2.map((id) => ({ kind: 'NETWORK_SEGMENT', id })),
+    params: { comp_peca: '6' },
+    outputMap: { tubo: null, escavacao: S('DRE.001').id, reaterro: S('DRE.005').id, colchao: null, fundo: null },
+    sourceReference: 'DRN-05 rev. B',
+  }, true);
+
+  // A: cerâmica do apto 2Q por ambiente (destino por linha na tipologia, × unidades) e uma ficha a terminar
+  const pisoItem = wA.nodes.find((n: Any) => n.nodeType === 'ITEM' && /piso|revestimento/i.test(n.title));
+  const t2q = typsA.find((t: Any) => t.code === '2Q');
+  let cerA: string | null = null;
+  if (pisoItem && t2q) {
+    const k = keysA['2Q']!;
+    cerA = await sheet(a, 'CER', 'Cerâmica — apartamento 2Q', pisoItem.id, {
+      rows: [
+        row({ ambiente: 'Sala', tipo: 'Piso + rodapé', peca_l: '67', peca_c: '67', pecas: '41', perimetro: '17,40', altura: '0,07', desconto: '(0,8+0,8)*0,07', paginacao: 'Sim' }),
+        row({ ambiente: 'Quarto 1', tipo: 'Piso + rodapé', peca_l: '67', peca_c: '67', pecas: '21', perimetro: '12,20', altura: '0,07', desconto: '0,056', paginacao: 'Sim' }),
+        row({ ambiente: 'Quarto 2', tipo: 'Piso + rodapé', peca_l: '67', peca_c: '67', pecas: '18', perimetro: '11,40', altura: '0,07', desconto: '0,056', paginacao: 'Sim' }),
+        row({ ambiente: 'Banheiro', tipo: 'Piso', area_geo: '3,60', paginacao: 'Não' }),
+      ],
+      rowAnchors: ['Sala', 'Quarto 1', 'Quarto 2', 'Banheiro'].map((r) => ({ kind: 'TYPOLOGY_ELEMENT', typologyId: t2q.id, elementKey: k[`piso:${r}`] })),
+      sourceReference: 'ARQ-2Q-05 (paginação de piso)',
+    }, true);
+  }
+  const alvB = await sheet(a, 'PAREDE', 'Alvenaria — Torre B (em andamento)', null, {
+    rows: [row({ ambiente: 'Fachada norte', perimetro: '24,5', altura: '2,8', desconto: '6,4', faces: '1' }), row({ ambiente: 'Fachada sul', perimetro: '24,5', altura: '2,8' })],
+  }, false);
+
+  // B: quadro de esquadrias por tipo de casa (cada destino no item "Esquadrias" do seu grupo) e um quadro a completar
+  const under = (root: Any, title: string) => { const byId = new Map(wB.nodes.map((n: Any) => [n.id, n])); return wB.nodes.find((n: Any) => { if (n.title !== title) return false; let x: Any = n; while (x) { if (x.id === root.id) return true; x = byId.get(x.parentId); } return false; }); };
+  const cols = typsB.map((t: Any) => ({ key: `c${t.code}`, label: `Casa tipo ${t.code}`, wbsNodeId: under(wB.nodes.find((n: Any) => n.title.startsWith(`Casas ${t.code} —`)), 'Esquadrias').id, anchor: { kind: 'TYPOLOGY_ELEMENT', typologyId: t.id, elementKey: keysB[t.code]!['Sala'] } }));
+  const esqId = (await call(page, 'POST', `/projects/${b}/schedules`, { kind: 'ESQUADRIAS', title: 'Quadro de esquadrias — casas' })).id;
+  let sq = await call(page, 'GET', `/projects/${b}/schedules/${esqId}`);
+  const svc2 = [S('ESQ.001').id, S('ESQ.002').id];
+  await call(page, 'PUT', `/projects/${b}/schedules/${esqId}`, { columns: cols, sourceReference: 'ESQ-01 rev. C', rows: [
+    { key: 'pa1', code: 'PA1', description: 'Porta de alumínio de giro', spec: '1 folha, veneziana', unit: 'un', width: '0.8', height: '2.1', serviceIds: svc2, cells: { cA: '1', cB: '1', cC: '2' } },
+    { key: 'pv1', code: 'PV1', description: 'Porta de vidro de correr', spec: '2 folhas', unit: 'un', width: '2.6', height: '2.2', serviceIds: svc2, cells: { cA: '1', cB: '1', cC: '1' } },
+    { key: 'j01', code: 'J01', description: 'Janela maxim-ar', spec: '2 módulos', unit: 'un', width: '1.6', height: '1.2', serviceIds: [S('ESQ.002').id], cells: { cA: '2', cB: '2', cC: '3' } },
+    { key: 'j02', code: 'J02', description: 'Janela basculante', spec: 'banheiro', unit: 'un', width: '0.6', height: '0.6', serviceIds: [S('ESQ.002').id], cells: { cA: '1', cB: '2', cC: '2' } },
+    { key: 'j03', code: 'J03', description: 'Janela de correr', spec: 'cozinha', unit: 'un', width: '1.2', height: '1', serviceIds: [S('ESQ.002').id], cells: { cA: '1', cB: '1', cC: '1' } },
+  ] }, sq.version);
+  sq = await call(page, 'GET', `/projects/${b}/schedules/${esqId}`);
+  await call(page, 'POST', `/projects/${b}/schedules/${esqId}/launch`, {}, sq.version);
+  const louId = (await call(page, 'POST', `/projects/${b}/schedules`, { kind: 'LOUCAS_METAIS', title: 'Louças e metais — casas' })).id;
+  const lq = await call(page, 'GET', `/projects/${b}/schedules/${louId}`);
+  await call(page, 'PUT', `/projects/${b}/schedules/${louId}`, { columns: [{ key: 'cA', label: 'Casa tipo A' }], rows: [
+    { key: 'v', description: 'Vaso sanitário com caixa acoplada', unit: 'un', serviceIds: [], cells: { cA: '1' } },
+    { key: 'l', description: 'Lavatório de semiencaixe', unit: 'un', serviceIds: [], cells: { cA: '1' } },
+    { key: 'ch', description: 'Chuveiro cromado', unit: 'un', serviceIds: [], cells: { cA: '1' } },
+  ] }, lq.version);
+
+  // A: migração de planilha em preparação (arquivo de exemplo enviado pela API real)
+  let wbImport: string | null = null;
+  if (fixture) {
+    wbImport = (await page.evaluate(async ({ a, b64 }) => {
+      const csrf = (await (await fetch('/api/auth/me')).json()).csrfToken;
+      const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+      const form = new FormData();
+      form.append('file', new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Levantamento VMB (exemplo).xlsx');
+      const r = await fetch(`/api/projects/${a}/workbook-imports`, { method: 'POST', body: form, headers: { 'X-CSRF-Token': csrf } });
+      if (!r.ok) throw new Error(`upload ${r.status} ${await r.text()}`);
+      return r.json();
+    }, { a, b64: fixture.toString('base64') })).id;
+  }
+
+  // Fila de trabalho (a responsável também revisa, para mostrar todas as etapas)
+  const me = (await call(page, 'GET', '/auth/me')).user.id;
+  const task = async (p: string, body: Record<string, unknown>, steps: string[]) => {
+    const id = (await call(page, 'POST', `/projects/${p}/tasks`, body)).id;
+    for (const to of steps) {
+      const t = (await call(page, 'GET', `/projects/${p}/tasks`)).find((x: Any) => x.id === id);
+      await call(page, 'POST', `/projects/${p}/tasks/${id}/transition`, { to, ...(to === 'DOING' && t.status === 'REVIEW' && { comment: 'Conferir o rodapé da sala: faltou descontar a porta da varanda.' }) }, t.version);
+    }
+  };
+  await task(a, { title: 'Levantar cerâmica dos apartamentos 3Q', assigneeId: me, dueDate: '2026-11-20' }, []);
+  await task(a, { title: 'Concluir alvenaria da Torre B', link: { kind: 'SHEET', id: alvB }, assigneeId: me, dueDate: '2026-12-05' }, ['DOING']);
+  if (cerA) await task(a, { title: 'Revisar cerâmica do apartamento 2Q', link: { kind: 'SHEET', id: cerA }, assigneeId: me, reviewerId: me, dueDate: '2026-12-01' }, ['DOING', 'REVIEW', 'DOING', 'REVIEW']);
+  if (wbImport) await task(a, { title: 'Migrar a planilha de levantamento do Viva Mais Barra', link: { kind: 'WORKBOOK_IMPORT', id: wbImport }, dueDate: '2026-12-12' }, []);
+  await task(b, { title: 'Conferir quadro de esquadrias', link: { kind: 'SCHEDULE', id: esqId }, assigneeId: me, reviewerId: me }, ['DOING', 'REVIEW', 'DONE']);
+  await task(b, { title: 'Escolher serviços das louças e metais', link: { kind: 'SCHEDULE', id: louId }, assigneeId: me, dueDate: '2026-12-10' }, []);
+  await task(c, { title: 'Lançar a drenagem da Rua das Palmeiras', link: { kind: 'SHEET', id: rede }, assigneeId: me, reviewerId: me }, ['DOING', 'REVIEW', 'DONE']);
   return { a, b, c };
 }

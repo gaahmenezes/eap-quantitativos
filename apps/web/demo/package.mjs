@@ -11,8 +11,12 @@ style = style.replace(/url\(\.\/([^)]+)\)/g, (_, f) => {
   const mime = f.endsWith('.woff2') ? 'font/woff2' : f.endsWith('.woff') ? 'font/woff' : 'application/octet-stream';
   return `url(data:${mime};base64,${b.toString('base64')})`;
 });
-const script = readFileSync(join(dir, js), 'utf8').replace(/<\/script/gi, '<\\/script');
-const page = `<title>EAP Quantitativos</title>
+const script = readFileSync(join(dir, js), 'utf8')
+  .replace(/<\/script/gi, '<\\/script')
+  // Não-ASCII escapado: a página funciona mesmo se o servidor não declarar charset.
+  .replace(/[\u0080-\uffff]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+const page = `<meta charset="utf-8">
+<title>EAP Quantitativos</title>
 <style>${style}</style>
 <div id="root"></div>
 <script type="module">${script}</script>
