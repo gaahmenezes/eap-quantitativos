@@ -33,6 +33,8 @@ export const invalid = (detail: string, path = 'anchor') => new AppError(422, 'V
 
 const sheetOwned = () => conflict('SHEET_OWNED', 'Esta medição é gerada por uma ficha de levantamento. Altere a ficha e lance os quantitativos novamente.');
 
+const scheduleOwned = () => conflict('SCHEDULE_OWNED', 'Esta medição é gerada por um quadro de componentes. Altere o quadro e lance os quantitativos novamente.');
+
 type Row = Measurement & { revisions: MeasurementRevision[] };
 
 interface Computed {
@@ -198,6 +200,7 @@ export class MeasurementsService {
       if (!m) throw notFound('Medição');
       if (m.archivedAt) throw conflict('ARCHIVED', 'Medição arquivada não pode ser revisada. Restaure-a antes.');
       if (m.sheetId) throw sheetOwned();
+      if (m.scheduleId) throw scheduleOwned();
       const { target, units } = await this.serviceWithUnit(tx, actor.organizationId, projectId, m.serviceId);
       await this.checkDocument(tx, actor.organizationId, projectId, input.documentId);
       const c = await this.compute(tx, actor.organizationId, target, input.calc, units);
@@ -215,6 +218,7 @@ export class MeasurementsService {
       const m = await tx.measurement.findFirst({ where: { id, projectId, organizationId: actor.organizationId } });
       if (!m) throw notFound('Medição');
       if (m.sheetId) throw sheetOwned();
+      if (m.scheduleId) throw scheduleOwned();
       if (!archived) {
         if (!m.archivedAt) return;
         await this.checkWbsService(tx, actor.organizationId, projectId, m.wbsNodeId, m.serviceId);
@@ -248,6 +252,8 @@ export class MeasurementsService {
     const versionFormula = await this.versionFormulaIds(rows);
     const sheetIds = [...new Set(rows.map((r) => r.sheetId).filter((x): x is string => !!x))];
     const sheetTitle = new Map(sheetIds.length ? (await this.prisma.sheet.findMany({ where: { id: { in: sheetIds } }, select: { id: true, title: true } })).map((x) => [x.id, x.title]) : []);
+    const scheduleIds = [...new Set(rows.map((r) => r.scheduleId).filter((x): x is string => !!x))];
+    const scheduleTitle = new Map(scheduleIds.length ? (await this.prisma.schedule.findMany({ where: { id: { in: scheduleIds } }, select: { id: true, title: true } })).map((x) => [x.id, x.title]) : []);
     const revDto = (v: MeasurementRevision): MeasurementRevisionDto => ({
       id: v.id, number: v.number, method: v.method, formulaVersionId: v.formulaVersionId, inputs: v.inputs, memory: v.memory as unknown as MemoryDto,
       quantity: v.quantity.toString(), unit: unitSym.get(v.unitId) ?? '', sourceReference: v.sourceReference, notes: v.notes, reason: v.reason,
@@ -269,6 +275,7 @@ export class MeasurementsService {
         current: revDto(current),
         formulaOutdated: fv && newest && newest.number > fv.number ? { latestVersionId: newest.id, latestNumber: newest.number } : null,
         sheet: m.sheetId ? { id: m.sheetId, title: sheetTitle.get(m.sheetId) ?? '', outputKey: m.sheetOutputKey! } : null,
+        schedule: m.scheduleId ? { id: m.scheduleId, title: scheduleTitle.get(m.scheduleId) ?? '' } : null,
         archivedAt: m.archivedAt?.toISOString() ?? null, archiveReason: m.archiveReason, version: m.version,
         revisions: m.revisions.sort((x, y) => y.number - x.number).map(revDto),
       };

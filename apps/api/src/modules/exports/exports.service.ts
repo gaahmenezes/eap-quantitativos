@@ -14,7 +14,7 @@ const DIMENSIONS = Object.keys(DIMENSION_LABELS) as ConsolidationDimensionKey[];
 const when = () => new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 const label = (f: ImportKindKey) => IMPORT_FIELDS[f].map((x) => x.label);
 const WBS_TYPE = { GROUP: 'Agrupador', ITEM: 'Item quantificável' } as const;
-const METHOD = { MANUAL: 'Manual', FORMULA: 'Fórmula', IMPORTED: 'Importada', SHEET: 'Ficha' } as const;
+const METHOD = { MANUAL: 'Manual', FORMULA: 'Fórmula', IMPORTED: 'Importada', SHEET: 'Ficha', SCHEDULE: 'Quadro' } as const;
 
 @Injectable()
 export class ExportsService {

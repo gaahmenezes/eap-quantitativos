@@ -22,13 +22,13 @@ import { loadUnits } from '../formulas/units.js';
 import { anchorLabel, loadContext, type AnchorFields, type MeasurementCtx } from '../measurements/context.js';
 import { documentsById, invalid, lock, MeasurementsService } from '../measurements/measurements.service.js';
 import { sheetInvalid } from './sheet-templates.service.js';
+import { syncOwnedMeasurements, type OwnedPlan } from '../measurements/owned.js';
 
 const TX = { timeout: 60_000 } as const;
 const ANCHOR_COLS = ['anchorKind', 'structureNodeId', 'networkSegmentId', 'networkNodeId', 'physicalElementId', 'typologyId', 'elementKey', 'dwellingUnitId'] as const;
 const NO_ANCHOR: AnchorFields = { anchorKind: null as unknown as AnchorFields['anchorKind'], structureNodeId: null, networkSegmentId: null, networkNodeId: null, physicalElementId: null, typologyId: null, elementKey: null, dwellingUnitId: null };
 
 const anchorOf = (s: Pick<Sheet, (typeof ANCHOR_COLS)[number]>): AnchorFields | null => (s.anchorKind ? Object.fromEntries(ANCHOR_COLS.map((k) => [k, s[k]])) as AnchorFields : null);
-const sameAnchor = (a: AnchorFields, b: AnchorFields) => ANCHOR_COLS.every((k) => (a[k] ?? null) === (b[k] ?? null));
 function toAnchorInput(f: AnchorFields | null): AnchorInput | null {
   if (!f) return null;
   switch (f.anchorKind) {
@@ -225,32 +225,17 @@ export class SheetsService {
       if (!filled) throw invalid('A ficha não tem linhas preenchidas.', 'rows');
 
       const outputMap = s.outputMap as Record<string, string | null>;
-      const existing = await tx.measurement.findMany({ where: { sheetId: id, archivedAt: null } });
-      const out: SheetLaunchResultDto = { created: 0, revised: 0, unchanged: 0, archived: 0, linkedServices: 0 };
-      const reasonText = (reason ?? '').trim() || `Relançamento da ficha "${s.title}"`;
-      const archive = async (mid: string, why: string) => {
-        await tx.measurement.update({ where: { id: mid }, data: { archivedAt: new Date(), archiveReason: why.slice(0, 500), version: { increment: 1 } } });
-        await this.audit.record(tx, actor, { projectId, entityType: 'Measurement', entityId: mid, action: 'ARCHIVE', reason: why });
-        out.archived++;
-      };
       const params_ = def.params.map((p) => ({ key: p.key, label: p.label, unit: p.unit, value: params[p.key] ?? p.value }));
-      const plans: { output: SheetDef['outputs'][number]; serviceId: string; quantity: string; memory: MemoryDto; unitId: string }[] = [];
-
+      const plans: OwnedPlan[] = [];
       for (const o of def.outputs) {
-        const ex = existing.find((m) => m.sheetOutputKey === o.key);
         const serviceId = outputMap[o.key] ?? null;
-        if (!serviceId) { if (ex) await archive(ex.id, `Saída "${o.label}" sem serviço na ficha "${s.title}"`); continue; }
+        if (!serviceId) continue;
         const { service, target } = await this.measurements.serviceWithUnit(tx, actor.organizationId, projectId, serviceId);
         if (service.archivedAt) throw invalid(`O serviço ${service.code} está arquivado.`, `outputMap.${o.key}`);
         const total = result.totals.find((t) => t.key === o.key)!;
         const quantity = outputInUnit(total, target);
         if (quantity === null) throw invalid(`A saída "${o.label}" está em ${total.unit}, mas o serviço ${service.code} é medido em ${target.symbol}.`, `outputMap.${o.key}`);
-        if (ex && (ex.wbsNodeId !== s.wbsNodeId || ex.serviceId !== serviceId || !sameAnchor(ex, anchor))) await archive(ex.id, `Destino da ficha "${s.title}" alterado`);
-        if (/^-?0(\.0+)?$/.test(quantity)) {
-          const still = existing.find((m) => m.sheetOutputKey === o.key && m.wbsNodeId === s.wbsNodeId && m.serviceId === serviceId && sameAnchor(m, anchor));
-          if (still) await archive(still.id, `Saída "${o.label}" zerada na ficha "${s.title}"`);
-          continue;
-        }
+        if (/^-?0(\.0+)?$/.test(quantity)) continue;
         const col = def.columns.find((c) => c.key === o.column)!;
         const sheetMemory: SheetMemoryDto = {
           sheetId: s.id, title: s.title,
@@ -261,38 +246,11 @@ export class SheetsService {
           skippedRows: result.rows.length - filled, total: total.total, totalUnit: total.unit,
         };
         const memory: MemoryDto = { method: 'SHEET', expression: col.expression ?? null, inputs: [], substituted: null, resultBase: total.base, resultBaseUnit: baseUnitSymbol(total.dim), result: quantity, unit: target.symbol, formula: null, sheet: sheetMemory };
-        plans.push({ output: o, serviceId, quantity, memory, unitId: target.id });
+        plans.push({ key: o.key, label: o.label, wbsNodeId: s.wbsNodeId, serviceId, anchor, quantity, unitId: target.id, memory });
       }
-
-      // vínculo serviço × item da EAP criado automaticamente (a ficha declara o que mede)
-      const links = new Set((await tx.wbsNodeService.findMany({ where: { wbsNodeId: s.wbsNodeId }, select: { serviceId: true } })).map((l) => l.serviceId));
-      const missing = [...new Set(plans.map((p) => p.serviceId))].filter((x) => !links.has(x));
-      if (missing.length) {
-        await tx.wbsNodeService.createMany({ data: missing.map((serviceId) => ({ wbsNodeId: s.wbsNodeId!, projectId, organizationId: actor.organizationId, serviceId, fromTemplate: false })) });
-        await this.audit.record(tx, actor, { projectId, entityType: 'WbsNode', entityId: s.wbsNodeId, action: 'UPDATE', reason: `Serviços vinculados pela ficha "${s.title}"`, after: { servicesAdded: missing } });
-        out.linkedServices = missing.length;
-      }
-
-      const inputs = { sheetId: s.id, templateVersionId: s.templateVersionId, params, rows: s.rows } as Prisma.InputJsonValue;
-      const active = await tx.measurement.findMany({ where: { sheetId: id, archivedAt: null }, include: { revisions: { orderBy: { number: 'desc' }, take: 1 } } });
-      for (const p of plans) {
-        const ex = active.find((m) => m.sheetOutputKey === p.output.key);
-        const rev = { organizationId: actor.organizationId, projectId, method: 'SHEET' as const, formulaVersionId: null, inputs, memory: p.memory as unknown as Prisma.InputJsonValue, quantity: p.quantity, unitId: p.unitId, sourceReference: s.sourceReference, documentId: s.documentId, createdById: actor.userId };
-        if (ex) {
-          const last = ex.revisions[0]!;
-          if (ex.quantity.toString() === p.quantity && last.unitId === p.unitId && contribution(last.memory as unknown as MemoryDto) === contribution(p.memory)) { out.unchanged++; continue; }
-          await tx.measurement.update({ where: { id: ex.id }, data: { quantity: p.quantity, currentNumber: { increment: 1 }, version: { increment: 1 } } });
-          await tx.measurementRevision.create({ data: { ...rev, measurementId: ex.id, number: ex.currentNumber + 1, reason: reasonText } });
-          await this.audit.record(tx, actor, { projectId, entityType: 'Measurement', entityId: ex.id, action: 'UPDATE', reason: reasonText, before: { quantity: ex.quantity.toString(), revision: ex.currentNumber }, after: { quantity: p.quantity, revision: ex.currentNumber + 1, method: 'SHEET' } });
-          out.revised++;
-        } else {
-          await this.measurements.checkOverlap(tx, projectId, s.wbsNodeId, p.serviceId, anchor, ctx);
-          const m = await tx.measurement.create({ data: { organizationId: actor.organizationId, projectId, wbsNodeId: s.wbsNodeId, serviceId: p.serviceId, ...anchor, sheetId: s.id, sheetOutputKey: p.output.key, quantity: p.quantity } });
-          await tx.measurementRevision.create({ data: { ...rev, measurementId: m.id, number: 1 } });
-          await this.audit.record(tx, actor, { projectId, entityType: 'Measurement', entityId: m.id, action: 'CREATE', after: { wbsNodeId: s.wbsNodeId, serviceId: p.serviceId, anchor: toAnchorInput(anchor), quantity: p.quantity, unit: p.memory.unit, method: 'SHEET', sheetId: s.id, output: p.output.key } });
-          out.created++;
-        }
-      }
+      const out: SheetLaunchResultDto = await syncOwnedMeasurements(tx, actor, projectId,
+        { kind: 'sheet', id: s.id, title: s.title, sourceReference: s.sourceReference, documentId: s.documentId, inputs: { sheetId: s.id, templateVersionId: s.templateVersionId, params, rows: s.rows } as Prisma.InputJsonValue },
+        plans, { ctx, measurements: this.measurements, audit: this.audit, reason: (reason ?? '').trim() || `Relançamento da ficha "${s.title}"`, fingerprint: contribution });
       const done = await tx.sheet.updateMany({ where: { id, version }, data: { launchedAt: new Date(), launchedHash: contentHash(s), version: { increment: 1 } } });
       if (done.count === 0) throw versionConflict();
       await this.audit.record(tx, actor, { projectId, entityType: 'Sheet', entityId: id, action: 'LAUNCH', reason: reason ?? undefined, after: out });

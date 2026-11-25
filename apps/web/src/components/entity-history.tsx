@@ -13,7 +13,7 @@ const FIELD: Record<string, string> = {
   serviceIds: 'Serviços', parentId: 'Nó superior', position: 'Posição', description: 'Descrição',
 };
 
-const VALUE: Record<string, string> = { MANUAL: 'Manual', FORMULA: 'Fórmula', IMPORTED: 'Importada', SHEET: 'Ficha', GROUP: 'Agrupador', ITEM: 'Item quantificável' };
+const VALUE: Record<string, string> = { MANUAL: 'Manual', FORMULA: 'Fórmula', IMPORTED: 'Importada', SHEET: 'Ficha', SCHEDULE: 'Quadro', GROUP: 'Agrupador', ITEM: 'Item quantificável' };
 const show = (v: unknown): string => {
   if (v === null || v === undefined || v === '') return '—';
   if (Array.isArray(v)) return `${v.length} item(ns)`;
