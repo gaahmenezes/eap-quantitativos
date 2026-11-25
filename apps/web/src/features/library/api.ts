@@ -11,13 +11,14 @@ export const libKeys = {
 export const useUnits = () => useQuery({ queryKey: libKeys.units, queryFn: () => api<UnitDto[]>('GET', '/catalog/units'), staleTime: 60_000 });
 export const useCategories = () => useQuery({ queryKey: libKeys.categories, queryFn: () => api<CategoryDto[]>('GET', '/catalog/service-categories') });
 
-export function useServices(projectId: string | null, params: Record<string, string | number | undefined>) {
+export function useServices(projectId: string | null, params: Record<string, string | number | undefined>, enabled = true) {
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]));
   const base = projectId ? `/projects/${projectId}/services` : '/catalog/services';
   return useQuery({
     queryKey: [...libKeys.services(projectId ?? 'catalog'), params],
     queryFn: ({ signal }) => api<{ total: number; items: ServiceDto[] }>('GET', `${base}?${qs}`, { signal }),
     placeholderData: (prev) => prev,
+    enabled,
   });
 }
 

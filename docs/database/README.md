@@ -106,3 +106,13 @@ Também: `measurement_revision.documentId` (arquivo de origem, FK por organizaç
 | `sheet` | Ficha do empreendimento: versão do modelo, destino (item da EAP + âncora com FKs compostas por empreendimento), parâmetros, serviço por saída, linhas (JSONB), impressão digital do último lançamento | só versão **publicada** do modelo (trigger); âncora nenhuma ou exatamente uma (CHECK); **não é apagada** (trigger) |
 
 Também: `measurement.sheetId` + `sheetOutputKey` (origem da medição; imutáveis por trigger; uma medição **ativa** por saída — índice único parcial) e o método `SHEET` em `MeasurementMethod`.
+
+## Tabelas (F11 — quadros de componentes e materiais)
+| Tabela | Conteúdo | Regras no banco |
+|---|---|---|
+| `schedule` | Quadro do empreendimento (tipo, título, impressão digital do último lançamento) | **não é apagado** (trigger); lançamento coerente (CHECK) |
+| `schedule_column` | Destino: chave, nome, item da EAP e âncora | FKs compostas por empreendimento; âncora nenhuma ou exatamente uma (CHECK); `UNIQUE(scheduleId, key)` |
+| `schedule_row` | Item: Id, descrição, especificação, unidade, largura/altura `NUMERIC(12,4)`, quantidades por destino (JSONB) | FK de unidade por organização; L/A > 0 (CHECK); `UNIQUE(scheduleId, key)` |
+| `schedule_row_service` | Serviços do item (ordem) | FK de serviço por organização |
+
+Também: `measurement.scheduleId` + `scheduleKey` (imutáveis por trigger; uma medição **ativa** por chave — índice parcial; origem única: ficha **ou** quadro — CHECK) e o método `SCHEDULE`.

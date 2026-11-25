@@ -275,7 +275,11 @@ argon2id; cookie de sessão `__Host-` httpOnly/Secure/SameSite=Lax com rotação
 **Entregáveis:** motor de fichas no domínio; modelos de ficha versionados com 6 modelos iniciais (cerâmica, parede, fôrma/concreto, aço, rede enterrada, telhado); fichas do empreendimento em grade; lançamento em medições com memória por linha (ADR-020).
 **Aceite:** valores das planilhas reais reproduzidos; lançamento sem dupla contagem; relançamento com revisão; medição de ficha não editável à mão; isolamento por organização.
 
-### F11 — Quadros de componentes e materiais · F12 — Migração das planilhas · F13 — Centro operacional · F14 — Integração com a outra plataforma
+### F11 — Quadros de componentes e materiais
+**Entregáveis:** quadros (esquadrias, louças e metais, materiais de instalações) com itens × destinos, L × A, lista padrão e lançamento do quadro de resumo em medições (ADR-021).
+**Aceite:** valores das planilhas reproduzidos (ex.: esquadrias 13,1 m²/casa × 362 = 4.742,2 m²); itens do mesmo material somam numa medição por destino; sem dupla contagem; isolamento por organização.
+
+### F12 — Migração das planilhas · F13 — Centro operacional · F14 — Integração com a outra plataforma
 Escopo resumido em `docs/implementation/backlog.md`; detalhamento no início de cada fase.
 
 ### F15 — Qualidade e preparação para produção (antes F10)

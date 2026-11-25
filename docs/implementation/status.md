@@ -71,6 +71,11 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F10 | Fichas do empreendimento: grade com cálculo ao vivo, teclado, colar da planilha, parâmetros, destino (EAP + âncora), serviço por saída | Concluída | `sheets.test.ts`, E2E F10, revisão visual |
 | F10 | Lançamento em medições (método Ficha) com memória por linha, revisão só no que mudou, arquivamento de saídas removidas, dupla contagem e vínculo automático serviço × item | Concluída | `sheets.test.ts` (tipologia × 60 casas), E2E F10 |
 | F10 | Medição de ficha bloqueada para revisão manual; arquivar ficha arquiva seus quantitativos; isolamento entre organizações e papéis | Concluída | `sheets.test.ts` |
+| F11 | Cálculo dos quadros no domínio: contagem, conversão de unidade, contagem × L × A, quadro de resumo por serviço × destino | Concluída | `packages/domain/src/schedule/schedule.test.ts` (Esquadrias AL, hidráulica e elétrica da planilha Viva Mais Barra) |
+| F11 | Quadros no empreendimento: destinos (EAP + âncora, × unidades da tipologia), itens com até 3 serviços, gravação da grade com If-Match, lista padrão copiada de outro quadro | Concluída | `apps/api/test/schedules.test.ts` |
+| F11 | Lançamento em medições (método Quadro) com memória por item, revisão só no que mudou, arquivamento do que saiu, dupla contagem; mecanismo comum com as fichas | Concluída | `schedules.test.ts`, `sheets.test.ts` |
+| F11 | Tela de quadros: grade matricial, colar da planilha, seletor de serviço, quadro de resumo com total da obra, memória na tela de quantitativos | Concluída | E2E F11, revisão visual |
+| F11 | Isolamento (outra organização 404, leitor 403), quadro não apagado, arquivar arquiva quantitativos | Concluída | `schedules.test.ts` |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 129 · `apps/api` (integração, Postgres real): 152 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 13
+- `packages/domain`: 137 · `apps/api` (integração, Postgres real): 161 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 14

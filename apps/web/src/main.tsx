@@ -1,3 +1,5 @@
+import { SchedulesPage } from './features/schedules/schedules-page';
+import { ScheduleEditorPage } from './features/schedules/schedule-editor';
 import { SheetTemplatesPage } from './features/sheets/templates-page';
 import { SheetsPage } from './features/sheets/sheets-page';
 import { SheetEditorPage } from './features/sheets/sheet-editor';
@@ -92,6 +94,8 @@ async function start() {
               <Route path="fichas" element={<SheetTemplatesPage />} />
               <Route path="empreendimentos/:projectId/fichas" element={<SheetsPage />} />
               <Route path="empreendimentos/:projectId/fichas/:sheetId" element={<SheetEditorPage />} />
+              <Route path="empreendimentos/:projectId/quadros" element={<SchedulesPage />} />
+              <Route path="empreendimentos/:projectId/quadros/:scheduleId" element={<ScheduleEditorPage />} />
               <Route path="empreendimentos/:projectId/quantitativos" element={<QuantitiesPage />} />
               <Route path="empreendimentos/:projectId/memorias" element={<MemoriesPage />} />
               <Route path="empreendimentos/:projectId/consolidacoes" element={<ConsolidationPage />} />

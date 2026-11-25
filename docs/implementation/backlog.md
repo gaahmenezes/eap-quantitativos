@@ -1,11 +1,18 @@
 # Backlog técnico
 
 ## Roteiro a partir da F10 (centro operacional de levantamento)
-- **F11 — Quadros de componentes e materiais**: portas/esquadrias, materiais de instalações, quadros por tipologia (contagens e listas que hoje vivem nas planilhas).
+- ~~F11 — Quadros de componentes e materiais~~ (concluída, ADR-021).
 - **F12 — Migração das planilhas**: importar planilhas existentes (Marupi, Viva Mais Barra, SMR I…) para fichas, com mapeamento por aba e conferência dos totais.
 - **F13 — Centro operacional**: painel por empreendimento (fichas pendentes de lançamento, cobertura da EAP, revisões), destino por linha nas fichas, fila de trabalho da equipe.
 - **F14 — Integração com a outra plataforma** (definir formato e autenticação com o usuário).
 - **F15 — Qualidade e produção** (itens abaixo, antes "F10").
+
+## Decisões da F11 a validar com o usuário
+- Lançamento soma por serviço × destino (quadro de resumo); o detalhe por item fica na memória de cálculo.
+- Medida por peça só por largura × altura (esquadrias); serviço em m² sem L × A é erro do item.
+- Até 3 serviços por item (ex.: janela em un e em m²).
+- Lista padrão copia itens e serviços do catálogo; serviços específicos de outro empreendimento são descartados com aviso.
+- Avaliar âncora "unidade inteira" de tipologia (hoje exige elemento-raiz, ex.: "Casa").
 
 ## Decisões da F10 a validar com o usuário
 - Uma ficha tem um único destino (item da EAP + âncora); para pavimentos/trechos diferentes, uma ficha por destino.

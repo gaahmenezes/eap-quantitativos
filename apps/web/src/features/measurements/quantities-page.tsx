@@ -163,7 +163,7 @@ function ItemView({ projectId, item, canEdit }: { projectId: string; item: WbsNo
                           {m.anchor.archived && <span className="ml-1 rounded-[3px] bg-warn-wash px-1 text-[11.5px] text-warn">âncora arquivada</span>}
                           {m.warnings.map((w, i) => <span key={i} className="block text-[12px] text-warn">{w}</span>)}
                         </td>
-                        <td className="px-3 py-1.5">{m.current.method === 'FORMULA' ? <span className="font-mono text-[12.5px]">{m.current.memory.formula?.code} R{m.current.memory.formula?.versionNumber}</span> : m.sheet ? <span title={m.sheet.title}>ficha</span> : m.current.method === 'IMPORTED' ? 'importada' : 'manual'}
+                        <td className="px-3 py-1.5">{m.current.method === 'FORMULA' ? <span className="font-mono text-[12.5px]">{m.current.memory.formula?.code} R{m.current.memory.formula?.versionNumber}</span> : m.sheet ? <span title={m.sheet.title}>ficha</span> : m.schedule ? <span title={m.schedule.title}>quadro</span> : m.current.method === 'IMPORTED' ? 'importada' : 'manual'}
                           {m.formulaOutdated && <span className="ml-1 rounded-[3px] bg-warn-wash px-1 text-[11.5px] text-warn">desatualizada</span>}</td>
                         <td className="px-3 py-1.5 text-right font-mono">{fmtQty(m.quantity)}</td>
                         <td className="px-3 py-1.5 text-right font-mono">{m.anchor.kind === 'TYPOLOGY_ELEMENT' && !m.anchor.unitId ? `× ${m.multiplier}` : '1'}</td>
@@ -210,8 +210,13 @@ export function MeasurementDetail({ projectId, id, canEdit, onRevise }: { projec
           Lançada pela ficha <Link className="text-cyan-ink hover:underline" to={`/empreendimentos/${projectId}/fichas/${m.sheet.id}`}>{m.sheet.title}</Link>. Para alterar, edite a ficha e lance de novo.
         </Notice>
       )}
+      {m.schedule && (
+        <Notice tone="info">
+          Lançada pelo quadro <Link className="text-cyan-ink hover:underline" to={`/empreendimentos/${projectId}/quadros/${m.schedule.id}`}>{m.schedule.title}</Link>. Para alterar, edite o quadro e lance de novo.
+        </Notice>
+      )}
       {act.error && <Notice tone="danger">{act.error}</Notice>}
-      {canEdit && !m.sheet && (
+      {canEdit && !m.sheet && !m.schedule && (
         <div className="flex flex-wrap gap-2">
           {!m.archivedAt && <Button onClick={() => onRevise(m)}>Revisar</Button>}
           {!m.archivedAt && m.formulaOutdated && <Button variant="primary" onClick={() => onRevise(m, m.formulaOutdated!.latestVersionId)}>Recalcular com R{m.formulaOutdated.latestNumber}</Button>}

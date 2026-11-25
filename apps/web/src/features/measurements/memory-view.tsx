@@ -4,6 +4,7 @@ import { fmtQty } from '../../lib/format';
 /** Memória de cálculo legível: entradas, conversões, expressão substituída e resultado. */
 export function MemoryView({ memory: m }: { memory: MemoryDto }) {
   if (m.method === 'SHEET' && m.sheet) return <SheetMemory memory={m} />;
+  if (m.method === 'SCHEDULE' && m.schedule) return <ScheduleMemory memory={m} />;
   return (
     <div className="flex flex-col gap-2 text-[13px]">
       {m.method === 'FORMULA' ? (
@@ -74,6 +75,32 @@ function SheetMemory({ memory: m }: { memory: MemoryDto }) {
         {s.totalUnit !== m.unit && <><span className="text-muted"> → </span><strong>{fmtQty(m.result)} {m.unit}</strong></>}
         {s.totalUnit === m.unit && <strong className="sr-only"> {fmtQty(m.result)} {m.unit}</strong>}
       </p>
+    </div>
+  );
+}
+
+/** Memória de medição lançada por quadro: destino e itens que somam no serviço (quadro de resumo). */
+function ScheduleMemory({ memory: m }: { memory: MemoryDto }) {
+  const s = m.schedule!;
+  return (
+    <div className="flex flex-col gap-2 text-[13px]">
+      <p><span className="text-muted">Quadro </span><span className="font-medium">{s.title}</span><span className="text-muted"> · destino </span>{s.column.label}</p>
+      <div className="max-h-72 overflow-auto border border-line">
+        <table className="w-full text-left">
+          <thead className="sticky top-0 bg-paper text-[12px] text-muted"><tr><th className="px-2 py-1 font-normal">Item</th><th className="px-2 py-1 text-right font-normal">Quantidade</th><th className="px-2 py-1 text-right font-normal">Por peça</th><th className="px-2 py-1 text-right font-normal">{m.unit}</th></tr></thead>
+          <tbody>
+            {s.rows.map((r, i) => (
+              <tr key={i} className="border-t border-line">
+                <td className="px-2 py-1">{r.code && <span className="mr-1 font-mono">{r.code}</span>}{r.description}{r.spec && <span className="text-muted"> — {r.spec}</span>}</td>
+                <td className="px-2 py-1 text-right font-mono">{fmtQty(r.entered)} {r.enteredUnit}</td>
+                <td className="px-2 py-1 text-right font-mono">{r.perItem ? `${fmtQty(r.perItem)} m²` : ''}</td>
+                <td className="px-2 py-1 text-right font-mono">{fmtQty(r.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="font-mono"><span className="text-muted">Σ = </span><strong>{fmtQty(m.result)} {m.unit}</strong> <span className="font-sans text-muted">por destino</span></p>
     </div>
   );
 }

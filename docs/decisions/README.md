@@ -24,3 +24,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [018](018-revisoes-como-fotografias.md) | Revisões do empreendimento como fotografias imutáveis | Aceita |
 | [019](019-importacao-exportacao-e-arquivos.md) | Importação em área de preparação, exportações tabulares e arquivos de origem | Aceita |
 | [020](020-fichas-de-levantamento.md) | Fichas de levantamento: modelos versionados, grade e lançamento em medições | Aceita |
+| [021](021-quadros-de-componentes.md) | Quadros de componentes e materiais: itens × destinos e quadro de resumo lançado em medições | Aceita |
