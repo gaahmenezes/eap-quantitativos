@@ -79,6 +79,8 @@ model User {
   auditLogs       AuditLog[]
   invitationsSent Invitation[] @relation("InvitedBy")
 
+  assignedTasks WorkTask[] @relation("TaskAssignee")
+  reviewTasks WorkTask[] @relation("TaskReviewer")
   @@map("app_user")
 }
 
@@ -167,6 +169,7 @@ model Project {
   scheduleColumns ScheduleColumn[]
   schedules Schedule[]
   workbookImports WorkbookImport[]
+  tasks WorkTask[]
   @@unique([id, organizationId])
   @@unique([organizationId, code])
   @@index([organizationId, status])
@@ -938,6 +941,7 @@ model WbsNode {
 
   sheets Sheet[]
   scheduleColumns ScheduleColumn[]
+  tasks WorkTask[]
   @@unique([id, projectId])
   @@index([projectId, parentId, position])
   @@index([projectId, path])
@@ -1441,6 +1445,7 @@ model Sheet {
   document        Document?            @relation(fields: [documentId, organizationId], references: [id, organizationId], onDelete: Restrict)
   measurements    Measurement[]
 
+  tasks WorkTask[]
   @@unique([id, projectId])
   @@index([projectId, archivedAt])
   @@map("sheet")
@@ -1479,6 +1484,7 @@ model Schedule {
   rows         ScheduleRow[]
   measurements Measurement[]
 
+  tasks WorkTask[]
   @@unique([id, projectId])
   @@index([projectId, archivedAt])
   @@map("schedule")
@@ -1585,7 +1591,9 @@ model WorkbookImport {
   document Document              @relation(fields: [documentId, organizationId], references: [id, organizationId], onDelete: Restrict)
   sheets   WorkbookImportSheet[]
 
+  tasks WorkTask[]
   @@unique([id, organizationId])
+  @@unique([id, projectId])
   @@index([projectId, createdAt])
   @@map("workbook_import")
 }
@@ -1605,4 +1613,58 @@ model WorkbookImportSheet {
 
   @@id([importId, index])
   @@map("workbook_import_sheet")
+}
+
+// ===================== F13 — Centro operacional =====================
+
+enum WorkTaskStatus {
+  TODO
+  DOING
+  REVIEW
+  DONE
+}
+
+enum WorkTaskKind {
+  SHEET
+  SCHEDULE
+  WBS_ITEM
+  WORKBOOK_IMPORT
+  OTHER
+}
+
+/// Tarefa da fila de trabalho do empreendimento (ADR-023): levantar, revisar, migrar.
+model WorkTask {
+  id               String         @id @default(uuid(7)) @db.Uuid
+  organizationId   String         @db.Uuid
+  projectId        String         @db.Uuid
+  title            String         @db.VarChar(160)
+  description      String?        @db.VarChar(2000)
+  kind             WorkTaskKind
+  status           WorkTaskStatus @default(TODO)
+  sheetId          String?        @db.Uuid
+  scheduleId       String?        @db.Uuid
+  wbsNodeId        String?        @db.Uuid
+  workbookImportId String?        @db.Uuid
+  assigneeId       String?        @db.Uuid
+  reviewerId       String?        @db.Uuid
+  dueDate          DateTime?      @db.Date
+  completedAt      DateTime?      @db.Timestamptz(3)
+  archivedAt       DateTime?      @db.Timestamptz(3)
+  version          Int            @default(1)
+  createdById      String         @db.Uuid
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
+
+  project        Project         @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  sheet          Sheet?          @relation(fields: [sheetId, projectId], references: [id, projectId], onDelete: Restrict)
+  schedule       Schedule?       @relation(fields: [scheduleId, projectId], references: [id, projectId], onDelete: Restrict)
+  wbsNode        WbsNode?        @relation(fields: [wbsNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  workbookImport WorkbookImport? @relation(fields: [workbookImportId, projectId], references: [id, projectId], onDelete: Restrict)
+  assignee       User?           @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  reviewer       User?           @relation("TaskReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, status])
+  @@index([assigneeId, status])
+  @@index([reviewerId, status])
+  @@map("work_task")
 }
