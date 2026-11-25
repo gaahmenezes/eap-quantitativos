@@ -34,6 +34,8 @@
 
 **RN‑IMP (importação)** — arquivo → staging (`ImportJob`, `ImportRow`) → mapeamento → validação (duplicados, obrigatórios, unidades, referências, disjunção) → prévia → confirmação → gravação em transação única → relatório. Nada é gravado em tabelas de domínio antes da confirmação.
 
+**RN‑OPS (centro operacional, ADR-023)** — pendência = ficha/quadro não lançado, alterado após o lançamento ou com motivo que impede o lançamento, e migração não aplicada; cobertura = itens quantificáveis com medição ativa; tarefa com revisor só é concluída pelo revisor, e devolver/reabrir exige comentário; ficha com destino por linha lança uma medição por saída × destino.
+
 **RN‑MIG (migração de planilhas, ADR-022)** — planilha → extrato imutável por aba → plano (destino, linhas, mapeamento com unidade da coluna, conferências) → verificação (montagem + conferência linha a linha) → aplicação transacional que cria fichas/quadros com a origem de cada célula. Fórmulas nunca são executadas; nada é lançado em quantitativos na migração.
 
 **RN‑QDR (quadros de componentes, ADR-021)** — itens (Id, descrição, especificação, unidade, L × A, serviços) × destinos (item da EAP + âncora); quantidade do serviço = contagem, conversão de unidade ou contagem × L × A; lançar grava uma medição por serviço × destino (quadro de resumo) com a memória de cada item; medição de quadro só muda pelo quadro.

@@ -3,9 +3,15 @@
 ## Roteiro a partir da F10 (centro operacional de levantamento)
 - ~~F11 — Quadros de componentes e materiais~~ (concluída, ADR-021).
 - ~~F12 — Migração das planilhas~~ (concluída, ADR-022).
-- **F13 — Centro operacional**: painel por empreendimento (fichas pendentes de lançamento, cobertura da EAP, revisões), destino por linha nas fichas, fila de trabalho da equipe.
+- ~~F13 — Centro operacional~~ (concluída, ADR-023).
 - **F14 — Integração com a outra plataforma** (definir formato e autenticação com o usuário).
 - **F15 — Qualidade e produção** (itens abaixo, antes "F10").
+
+## Decisões da F13 a validar com o usuário
+- Cobertura da EAP = itens quantificáveis com ao menos uma medição ativa (não mede se todos os serviços vinculados foram levantados; isso aparece como "vínculos sem medição").
+- Com revisor definido, só ele aprova ou devolve; sem revisor, a tarefa é concluída por quem edita.
+- Destino por linha usa o mesmo item da EAP da ficha; linhas com o destino da ficha mantêm a chave anterior das medições.
+- Avaliar: notificação por e-mail de tarefas atribuídas e de revisões pendentes; cache do painel em empreendimentos grandes.
 
 ## Decisões da F12 a validar com o usuário
 - A migração cria fichas e quadros sem destino; o lançamento em quantitativos é feito depois, aba a aba.

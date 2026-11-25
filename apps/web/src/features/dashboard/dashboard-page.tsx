@@ -6,6 +6,7 @@ import { errorMessage } from '../../lib/api';
 import { fmtDateTime } from '../../lib/format';
 import { useSession } from '../auth/session';
 import { useProjects } from '../projects/api';
+import { MyTasks } from '../operations/my-tasks';
 
 /** Painel com dados reais: carteira ativa por classificação e últimas alterações. */
 export function DashboardPage() {
@@ -14,6 +15,7 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader title={`Olá, ${me?.user.name.split(' ')[0] ?? ''}`}>{me?.organization.name}</PageHeader>
+      <MyTasks />
       {projects.isPending ? (
         <Loading />
       ) : projects.isError ? (

@@ -26,3 +26,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [020](020-fichas-de-levantamento.md) | Fichas de levantamento: modelos versionados, grade e lançamento em medições | Aceita |
 | [021](021-quadros-de-componentes.md) | Quadros de componentes e materiais: itens × destinos e quadro de resumo lançado em medições | Aceita |
 | [022](022-migracao-de-planilhas.md) | Migração das planilhas: extrato por aba, plano com mapeamento, conferência e criação de fichas e quadros | Aceita |
+| [023](023-centro-operacional.md) | Centro operacional: painel de pendências e cobertura, fila de trabalho com revisão e destino por linha nas fichas | Aceita |

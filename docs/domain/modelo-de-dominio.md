@@ -16,6 +16,7 @@
 | Memória de cálculo | MeasurementRevision | Registro imutável de como a quantidade foi obtida |
 | Revisão | ProjectRevision | Congelamento formal (R00, R01…) |
 | Modelo de ficha | SheetTemplate + SheetTemplateVersion | Planilha de levantamento padronizada da organização (colunas, cálculos, parâmetros, tabelas, saídas) |
+| Tarefa | WorkTask | Item da fila de trabalho (levantar, lançar, revisar, migrar), com responsável, revisor e prazo |
 | Quadro de componentes | Schedule + ScheduleColumn + ScheduleRow | Lista de itens (esquadrias, louças, materiais) com quantidade por destino; lançado como quadro de resumo |
 | Ficha de levantamento | Sheet | Planilha preenchida num empreendimento; ao lançar, as saídas viram medições |
 

@@ -122,3 +122,10 @@ Também: `measurement.scheduleId` + `scheduleKey` (imutáveis por trigger; uma m
 |---|---|---|
 | `workbook_import` | Migração: documento XLSX de origem, plano por aba (JSONB), relatório da aplicação, situação | FK composta para empreendimento e documento; não é apagada; aplicada/cancelada não muda (trigger) |
 | `workbook_import_sheet` | Extrato de cada aba: valores e texto das fórmulas (JSONB), linhas, colunas, truncada | FK composta por organização; **imutável** (trigger) |
+
+## Tabelas (F13 — centro operacional)
+| Tabela | Conteúdo | Regras no banco |
+|---|---|---|
+| `work_task` | Tarefa: título, detalhes, tipo e vínculo (ficha, quadro, item da EAP ou migração), responsável, revisor, prazo, situação, conclusão | FKs compostas por empreendimento; vínculo coerente com o tipo (CHECK); concluída ⇔ data de conclusão (CHECK); não é apagada (trigger) |
+
+Também: `sheet.rowAnchors` (destino próprio de cada linha, JSONB validado no serviço) e `measurement.sheetOutputKey` ampliada para 64 caracteres (`saida@hash` por destino); `workbook_import` ganhou `UNIQUE(id, projectId)` para a FK das tarefas.

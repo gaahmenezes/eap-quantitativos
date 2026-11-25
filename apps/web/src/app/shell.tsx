@@ -25,6 +25,7 @@ const GLOBAL: NavItem[] = [
 ];
 
 const PROJECT: NavItem[] = [
+  { label: 'Centro operacional', projectPath: 'painel' },
   { label: 'Cadastro físico', projectPath: 'cadastro' },
   { label: 'Infraestrutura', projectPath: 'infraestrutura' },
   { label: 'Construtivo', projectPath: 'construtivo' },

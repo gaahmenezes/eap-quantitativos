@@ -82,6 +82,9 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F12 | Conferência linha a linha contra a planilha (fichas pelo motor; quadros × repetições) | Concluída | `workbook.test.ts` (Cerâmica MAT, drenagem SMR I, hidráulica), E2E F12 |
 | F12 | Assistente por aba (pré-visualização, mapeamento, verificação), aplicação transacional e relatório; nada lançado em quantitativos; isolamento | Concluída | `workbooks.test.ts`, E2E F12 |
 | F12 | Modelo CER: revestimento paginado passa a usar peças × dimensões (divergência revelada pela conferência) | Concluída | `engine.test.ts` |
+| F13 | Destino por linha nas fichas: uma medição por saída × destino, memória por destino, dupla contagem entre destinos | Concluída | `apps/api/test/sheet-rows.test.ts`, E2E F13 |
+| F13 | Fila de trabalho: tarefas vinculadas, responsável/revisor com edição, prazo, fluxo com revisão, transições auditadas, "Minhas tarefas" | Concluída | `apps/api/test/tasks.test.ts`, E2E F13 |
+| F13 | Centro operacional: pendências com motivos, cobertura da EAP por grupo, vínculos sem medição, fórmulas desatualizadas, alterações desde a última revisão, tarefas e atividade | Concluída | `apps/api/test/operations.test.ts`, E2E F13, revisão visual |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 151 · `apps/api` (integração, Postgres real): 167 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 15
+- `packages/domain`: 151 · `apps/api` (integração, Postgres real): 181 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 16
