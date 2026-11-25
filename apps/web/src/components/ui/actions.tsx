@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient, type QueryKey } from '@tanstack/react-query';
+import { Archive } from 'lucide-react';
 import { ApiError, errorMessage } from '../../lib/api';
 import { Button } from './button';
 import { TextField } from './field';
@@ -43,7 +44,7 @@ export function ArchiveButton({ label = 'Arquivar', what, onConfirm, variant = '
   const [busy, setBusy] = useState(false);
   return (
     <>
-      <Button variant={variant} onClick={() => { setReason(''); setOpen(true); }}>{label}</Button>
+      <Button variant={variant} icon={Archive} onClick={() => { setReason(''); setOpen(true); }}>{label}</Button>
       <ConfirmDialog open={open} onClose={() => setOpen(false)} title={`${label} ${what}`}
         footer={<>
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>

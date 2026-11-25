@@ -38,7 +38,7 @@ export function MemoriesPage() {
         </div>
         <ExportButton path={`/projects/${p.id}/exports`} body={{ report: 'memories' }} />
       </div>
-      <input type="search" aria-label="Buscar memórias" placeholder="Serviço, item da EAP ou documento de origem" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} className="mb-3 h-8 w-80 max-w-full rounded-[3px] border border-line-strong bg-sheet px-2 text-[13.5px]" />
+      <input type="search" aria-label="Buscar memórias" placeholder="Serviço, item da EAP ou documento de origem" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} className="mb-3 h-8 w-80 max-w-full rounded-md border border-line-strong bg-sheet px-2 text-[13.5px]" />
       {list.isPending ? <Loading /> : list.isError ? <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} /> : list.data.total === 0 ? (
         <EmptyState title={q ? 'Nada encontrado' : 'Nenhuma medição lançada'}>{q ? 'Ajuste a busca.' : 'As memórias aparecem aqui assim que houver medições em Quantitativos.'}</EmptyState>
       ) : (

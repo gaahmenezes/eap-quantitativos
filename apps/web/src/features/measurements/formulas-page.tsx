@@ -129,10 +129,10 @@ function VersionView({ formula: f, v, editable, onDiscarded }: { formula: Formul
       </p>
       {act.error && <Notice tone="danger">{act.error}</Notice>}
       {editable ? (
-        <TextArea label="Expressão" className="font-mono" rows={2} value={expression} onChange={(e) => setExpression(e.target.value)}
+        <TextArea label="Expressão" className="font-code" rows={2} value={expression} onChange={(e) => setExpression(e.target.value)}
           hint="Operadores + − * / ^ e parênteses. Funções: min, max, abs, sqrt, round, ceil, floor, pi(). Separe argumentos com ponto e vírgula." />
       ) : (
-        <div><p className="text-[13px] text-muted">Expressão</p><p className="font-mono text-[15px]">{v.expression}</p></div>
+        <div><p className="text-[13px] text-muted">Expressão</p><p className="font-code text-[15px]">{v.expression}</p></div>
       )}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] border border-line bg-sheet text-left text-[13.5px]">
@@ -143,10 +143,10 @@ function VersionView({ formula: f, v, editable, onDiscarded }: { formula: Formul
               <tr key={i} className="border-t border-line">
                 {editable ? (
                   <>
-                    <td className="px-2 py-1"><input aria-label={`Símbolo da variável ${i + 1}`} className="h-8 w-28 rounded-[3px] border border-line-strong px-2 font-mono" value={x.symbol} onChange={(e) => setVar(i, { symbol: e.target.value })} /></td>
-                    <td className="px-2 py-1"><input aria-label={`Descrição da variável ${i + 1}`} className="h-8 w-full rounded-[3px] border border-line-strong px-2" value={x.label} onChange={(e) => setVar(i, { label: e.target.value })} /></td>
-                    <td className="px-2 py-1"><select aria-label={`Unidade da variável ${i + 1}`} className="h-8 rounded-[3px] border border-line-strong px-1" value={x.unit} onChange={(e) => setVar(i, { unit: e.target.value })}>{unitOptions.map((u) => <option key={u.id} value={u.symbol}>{u.symbol}</option>)}</select></td>
-                    <td className="px-2 py-1"><select aria-label={`Restrição da variável ${i + 1}`} className="h-8 rounded-[3px] border border-line-strong px-1" value={x.constraint ?? ''} onChange={(e) => setVar(i, { constraint: (e.target.value || null) as FormulaVariableInput['constraint'] })}><option value="">nenhuma</option><option value="positive">&gt; 0</option><option value="nonnegative">≥ 0</option></select></td>
+                    <td className="px-2 py-1"><input aria-label={`Símbolo da variável ${i + 1}`} className="h-8 w-28 rounded-md border border-line-strong px-2 font-mono" value={x.symbol} onChange={(e) => setVar(i, { symbol: e.target.value })} /></td>
+                    <td className="px-2 py-1"><input aria-label={`Descrição da variável ${i + 1}`} className="h-8 w-full rounded-md border border-line-strong px-2" value={x.label} onChange={(e) => setVar(i, { label: e.target.value })} /></td>
+                    <td className="px-2 py-1"><select aria-label={`Unidade da variável ${i + 1}`} className="h-8 rounded-md border border-line-strong px-1" value={x.unit} onChange={(e) => setVar(i, { unit: e.target.value })}>{unitOptions.map((u) => <option key={u.id} value={u.symbol}>{u.symbol}</option>)}</select></td>
+                    <td className="px-2 py-1"><select aria-label={`Restrição da variável ${i + 1}`} className="h-8 rounded-md border border-line-strong px-1" value={x.constraint ?? ''} onChange={(e) => setVar(i, { constraint: (e.target.value || null) as FormulaVariableInput['constraint'] })}><option value="">nenhuma</option><option value="positive">&gt; 0</option><option value="nonnegative">≥ 0</option></select></td>
                     <td className="px-2 py-1"><button type="button" className="text-danger hover:underline" onClick={() => setVariables((xs) => xs.filter((_, k) => k !== i))}>Remover</button></td>
                   </>
                 ) : (

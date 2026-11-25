@@ -46,7 +46,7 @@ export function SchedulesPage() {
                 <td className="px-3 py-2">{KIND_LABEL[s.kind]}</td>
                 <td className="px-3 py-2 text-right font-mono">{s.rowCount}</td>
                 <td className="px-3 py-2 text-right font-mono">{s.columnCount}</td>
-                <td className="px-3 py-2">{s.archivedAt ? 'arquivado' : <span className={`rounded-[3px] px-1.5 py-0.5 text-[12px] ${STATUS_TONE[s.status]}`}>{SCHEDULE_STATUS_LABEL[s.status]}</span>}
+                <td className="px-3 py-2">{s.archivedAt ? 'arquivado' : <span className={`rounded-md px-1.5 py-0.5 text-[12px] ${STATUS_TONE[s.status]}`}>{SCHEDULE_STATUS_LABEL[s.status]}</span>}
                   {s.measurementCount > 0 && <span className="block text-[12px] text-muted">{s.measurementCount} quantitativo(s)</span>}</td>
                 <td className="px-3 py-2 text-[12.5px] text-muted">{fmtDateTime(s.updatedAt)}</td>
               </tr>

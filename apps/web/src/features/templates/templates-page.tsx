@@ -179,7 +179,7 @@ function VersionView({ template: t, versionId, canEdit, onDiscarded }: { templat
         {items.map((n) => (
           <li key={n.id} className="border-b border-line py-1.5 pr-3 last:border-0" style={{ paddingLeft: 12 + n.depth * 22 }}>
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-              <span className={`rounded-[3px] px-1.5 text-[11.5px] ${n.nodeType === 'ITEM' ? 'bg-cyan-wash text-cyan-ink' : 'bg-paper text-muted'}`}>{n.nodeType === 'ITEM' ? 'item' : 'grupo'}</span>
+              <span className={`rounded-md px-1.5 text-[11.5px] ${n.nodeType === 'ITEM' ? 'bg-cyan-wash text-cyan-ink' : 'bg-paper text-muted'}`}>{n.nodeType === 'ITEM' ? 'item' : 'grupo'}</span>
               <span className="font-mono text-[13.5px]">{n.title}</span>
               {n.repeat && <span className="text-[12.5px] text-muted">↻ {REPEAT_INFO[n.repeat as RepeatScope].label.toLowerCase()}</span>}
               {n.condition && <span className="font-mono text-[12px] text-muted">se {n.condition}</span>}
@@ -255,7 +255,7 @@ function NodeForm({ base, nodes, parentId, node, services, invalidate, onDone }:
             const s = services.find((x) => x.id === id);
             return <div key={id} className="flex items-baseline justify-between gap-2 text-[13.5px]"><span><span className="font-mono">{s?.code ?? '?'}</span> {s?.description}</span><button type="button" className="text-danger hover:underline" onClick={() => setServiceIds((x) => x.filter((y) => y !== id))}>Remover</button></div>;
           })}
-          <input type="search" aria-label="Buscar serviço para incluir" placeholder="Buscar serviço do catálogo" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 rounded-[3px] border border-line-strong bg-sheet px-2 text-[13.5px]" />
+          <input type="search" aria-label="Buscar serviço para incluir" placeholder="Buscar serviço do catálogo" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 rounded-md border border-line-strong bg-sheet px-2 text-[13.5px]" />
           {q && <ul className="border border-line">{filtered.map((s) => <li key={s.id}><button type="button" className="block w-full px-2 py-1 text-left text-[13px] hover:bg-cyan-wash" onClick={() => { setServiceIds((x) => [...x, s.id]); setQ(''); }}><span className="font-mono">{s.code}</span> {s.description} <span className="font-mono text-muted">({s.unitSymbol})</span></button></li>)}</ul>}
         </fieldset>
       )}

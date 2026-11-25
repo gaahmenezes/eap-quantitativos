@@ -2,7 +2,7 @@ import type { AttributeDefinitionDto, ElementTypeDto } from '@eapq/contracts';
 
 export type AttrValues = Record<string, string | boolean>;
 
-const control = 'h-9 w-full rounded-[3px] border border-line-strong bg-sheet px-2.5 text-[14px] aria-[invalid=true]:border-danger';
+const control = 'h-9 w-full rounded-md border border-line-strong bg-sheet px-2.5 text-[14px] aria-[invalid=true]:border-danger';
 
 /** Campos gerados a partir das definições de atributos do tipo de elemento (ADR-010). */
 export function AttributeFields({ defs, values, onChange, errors, idPrefix }: {

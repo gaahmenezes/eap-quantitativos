@@ -54,7 +54,7 @@ export function AdminPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: 'Administração' }]} />
-      <PageHeader title="Administração" actions={<Link to="/administracao/catalogo" className="inline-flex h-9 items-center rounded-[3px] border border-line-strong bg-sheet px-3.5 text-[14px] font-medium hover:bg-cyan-wash">Catálogo técnico</Link>}>Membros e convites de {me?.organization.name}</PageHeader>
+      <PageHeader title="Administração" actions={<Link to="/administracao/catalogo" className="inline-flex h-9 items-center rounded-md border border-line-strong bg-sheet px-3.5 text-[14px] font-medium hover:bg-cyan-wash">Catálogo técnico</Link>}>Membros e convites de {me?.organization.name}</PageHeader>
       {error && <div className="mb-4"><Notice tone="danger">{error}</Notice></div>}
 
       <section aria-labelledby="membros" className="mb-8 max-w-4xl">
@@ -75,7 +75,7 @@ export function AdminPage() {
                       <td className="px-3 py-2 text-muted">{m.email}</td>
                       <td className="px-3 py-2">
                         {editable ? (
-                          <select aria-label={`Papel de ${m.name}`} value={m.role} onChange={(e) => changeRole.mutate({ userId: m.userId, role: e.target.value as OrgRole })} className="h-8 rounded-[3px] border border-line-strong bg-sheet px-1.5">
+                          <select aria-label={`Papel de ${m.name}`} value={m.role} onChange={(e) => changeRole.mutate({ userId: m.userId, role: e.target.value as OrgRole })} className="h-8 rounded-md border border-line-strong bg-sheet px-1.5">
                             {(Object.keys(ROLE_LABEL) as OrgRole[]).filter((r) => r !== 'OWNER' || me?.orgRole === 'OWNER').map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                           </select>
                         ) : ROLE_LABEL[m.role]}
@@ -108,7 +108,7 @@ export function AdminPage() {
             <div className="mb-4">
               <Notice tone="ok">
                 Convite gerado. Envie este link à pessoa convidada — ele é exibido apenas agora e vale por 7 dias:
-                <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} aria-label="Link do convite" className="mt-2 block w-full rounded-[3px] border border-line-strong bg-sheet px-2 py-1.5 font-mono text-[12.5px]" />
+                <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} aria-label="Link do convite" className="mt-2 block w-full rounded-md border border-line-strong bg-sheet px-2 py-1.5 font-mono text-[12.5px]" />
               </Notice>
             </div>
           )}

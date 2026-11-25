@@ -21,7 +21,7 @@ export function MyTasks() {
                 <span className="ml-2 text-[12.5px] text-muted"><span className="font-mono">{t.projectCode}</span> {t.projectName}{t.link && ` · ${KIND_LABEL[t.link.kind]}`}</span>
               </span>
               <span className="text-[12.5px]">
-                {t.role === 'REVIEWER' ? <span className="rounded-[3px] bg-cyan-wash px-1.5 py-0.5 text-cyan-ink">aguarda sua revisão</span> : STATUS_LABEL[t.status]}
+                {t.role === 'REVIEWER' ? <span className="rounded-md bg-cyan-wash px-1.5 py-0.5 text-cyan-ink">aguarda sua revisão</span> : STATUS_LABEL[t.status]}
                 {t.dueDate && <span className={`ml-2 ${t.overdue ? 'font-medium text-danger' : 'text-muted'}`}>prazo {fmtDay(t.dueDate)}</span>}
               </span>
             </li>

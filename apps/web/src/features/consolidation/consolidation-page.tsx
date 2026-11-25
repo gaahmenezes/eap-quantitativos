@@ -92,7 +92,7 @@ export function ConsolidationPage() {
           <p className="flex flex-wrap items-center gap-2 text-[13px]">
             <span className="text-muted">Filtros:</span>
             {activeFilters.map(([d, v]) => (
-              <span key={d} className="inline-flex items-center gap-1 rounded-[3px] bg-cyan-wash px-2 py-0.5">
+              <span key={d} className="inline-flex items-center gap-1 rounded-md bg-cyan-wash px-2 py-0.5">
                 {DIMENSION_LABELS[d]} ({v.length})
                 <button type="button" aria-label={`Remover filtro ${DIMENSION_LABELS[d]}`} className="text-cyan-ink" onClick={() => setFilters((f) => ({ ...f, [d]: [] }))}>×</button>
               </span>

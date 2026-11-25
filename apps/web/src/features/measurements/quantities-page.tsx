@@ -61,7 +61,7 @@ export function QuantitiesPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ExportButton path={`/projects/${p.id}/exports`} body={{ report: 'measurements' }} />
-          {canEdit && <Link to={`/empreendimentos/${p.id}/importacoes`} className="inline-flex h-9 items-center rounded-[3px] border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar medições</Link>}
+          {canEdit && <Link to={`/empreendimentos/${p.id}/importacoes`} className="inline-flex h-9 items-center rounded-md border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar medições</Link>}
         </div>
       </div>
       {p.status === 'ARCHIVED' && <div className="mb-4"><Notice tone="warn">Empreendimento arquivado: quantitativos disponíveis apenas para consulta.</Notice></div>}
@@ -85,7 +85,7 @@ export function QuantitiesPage() {
           <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
             <section aria-label="Itens da EAP" className="min-w-0 self-start border border-line bg-sheet">
               <div className="flex flex-col gap-2 border-b border-line p-2">
-                <input type="search" aria-label="Buscar item da EAP" placeholder="Buscar por código, título ou local" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 rounded-[3px] border border-line-strong bg-sheet px-2 text-[13.5px]" />
+                <input type="search" aria-label="Buscar item da EAP" placeholder="Buscar por código, título ou local" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 rounded-md border border-line-strong bg-sheet px-2 text-[13.5px]" />
                 <label className="flex items-center gap-1.5 text-[13px]"><input type="checkbox" checked={onlyMeasured} onChange={(e) => setOnlyMeasured(e.target.checked)} /> Somente itens com medição</label>
               </div>
               <ul className="max-h-[min(70vh,720px)] overflow-auto">
@@ -160,11 +160,11 @@ function ItemView({ projectId, item, canEdit }: { projectId: string; item: WbsNo
                         <td className="px-3 py-1.5">
                           <button type="button" className="text-left text-cyan-ink hover:underline" onClick={(e) => { e.stopPropagation(); setDetailId(m.id); }}>{m.anchor.label}</button>
                           <span className="ml-1 text-[11.5px] text-muted">{ANCHOR_KIND[m.anchor.kind]}</span>
-                          {m.anchor.archived && <span className="ml-1 rounded-[3px] bg-warn-wash px-1 text-[11.5px] text-warn">âncora arquivada</span>}
+                          {m.anchor.archived && <span className="ml-1 rounded-md bg-warn-wash px-1 text-[11.5px] text-warn">âncora arquivada</span>}
                           {m.warnings.map((w, i) => <span key={i} className="block text-[12px] text-warn">{w}</span>)}
                         </td>
                         <td className="px-3 py-1.5">{m.current.method === 'FORMULA' ? <span className="font-mono text-[12.5px]">{m.current.memory.formula?.code} R{m.current.memory.formula?.versionNumber}</span> : m.sheet ? <span title={m.sheet.title}>ficha</span> : m.schedule ? <span title={m.schedule.title}>quadro</span> : m.current.method === 'IMPORTED' ? 'importada' : 'manual'}
-                          {m.formulaOutdated && <span className="ml-1 rounded-[3px] bg-warn-wash px-1 text-[11.5px] text-warn">desatualizada</span>}</td>
+                          {m.formulaOutdated && <span className="ml-1 rounded-md bg-warn-wash px-1 text-[11.5px] text-warn">desatualizada</span>}</td>
                         <td className="px-3 py-1.5 text-right font-mono">{fmtQty(m.quantity)}</td>
                         <td className="px-3 py-1.5 text-right font-mono">{m.anchor.kind === 'TYPOLOGY_ELEMENT' && !m.anchor.unitId ? `× ${m.multiplier}` : '1'}</td>
                         <td className="px-3 py-1.5 text-right font-mono">{fmtQty(m.effectiveTotal)}</td>

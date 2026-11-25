@@ -83,20 +83,20 @@ function ServicesTab() {
       <section className="min-w-0">
         <div role="search" className="mb-3 flex flex-wrap items-end gap-2">
           <label className="flex min-w-0 flex-1 flex-col gap-1 text-[13px] font-medium text-graphite-800">Buscar
-            <input type="search" aria-label="Buscar serviços" placeholder="Código ou descrição" value={q} onChange={(e) => setQ(e.target.value)} className="h-9 rounded-[3px] border border-line-strong bg-sheet px-2.5 text-[14px] font-normal" />
+            <input type="search" aria-label="Buscar serviços" placeholder="Código ou descrição" value={q} onChange={(e) => setQ(e.target.value)} className="h-9 rounded-md border border-line-strong bg-sheet px-2.5 text-[14px] font-normal" />
           </label>
           <label className="flex flex-col gap-1 text-[13px] font-medium text-graphite-800">Unidade
-            <select aria-label="Filtrar por unidade" value={unit} onChange={(e) => { setUnit(e.target.value); setOffset(0); }} className="h-9 rounded-[3px] border border-line-strong bg-sheet px-2 font-mono text-[14px] font-normal">
+            <select aria-label="Filtrar por unidade" value={unit} onChange={(e) => { setUnit(e.target.value); setOffset(0); }} className="h-9 rounded-md border border-line-strong bg-sheet px-2 font-mono text-[14px] font-normal">
               <option value="">Todas</option>{units.data!.filter((u) => !u.archivedAt).map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1 text-[13px] font-medium text-graphite-800">Situação
-            <select aria-label="Filtrar por situação" value={status} onChange={(e) => { setStatus(e.target.value as typeof status); setOffset(0); }} className="h-9 rounded-[3px] border border-line-strong bg-sheet px-2 text-[14px] font-normal">
+            <select aria-label="Filtrar por situação" value={status} onChange={(e) => { setStatus(e.target.value as typeof status); setOffset(0); }} className="h-9 rounded-md border border-line-strong bg-sheet px-2 text-[14px] font-normal">
               <option value="ACTIVE">Ativos</option><option value="ARCHIVED">Arquivados</option><option value="ALL">Todos</option>
             </select>
           </label>
           <ExportButton path={projectId ? `/projects/${projectId}/exports` : '/exports'} body={{ report: 'services' }} />
-          {canEdit && <Link to={projectId ? `/empreendimentos/${projectId}/importacoes` : '/importacoes'} className="inline-flex h-9 items-center rounded-[3px] border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar</Link>}
+          {canEdit && <Link to={projectId ? `/empreendimentos/${projectId}/importacoes` : '/importacoes'} className="inline-flex h-9 items-center rounded-md border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar</Link>}
           {canEdit && <Button variant="primary" onClick={() => setPanel('new')}>{projectId ? 'Novo serviço do empreendimento' : 'Novo serviço'}</Button>}
         </div>
         {list.isPending ? <Loading /> : list.isError ? <ErrorState message={errorMessage(list.error)} onRetry={() => list.refetch()} /> : list.data.total === 0 ? (

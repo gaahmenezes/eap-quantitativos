@@ -246,7 +246,7 @@ function MembersTab({ project, canManage }: { project: ProjectDto; canManage: bo
               <td className="px-3 py-2 text-muted">{m.email}</td>
               <td className="px-3 py-2">
                 {canManage ? (
-                  <select aria-label={`Papel de ${m.name}`} value={m.role} onChange={(e) => setMember.mutate({ userId: m.userId, role: e.target.value as ProjectRole })} className="h-8 rounded-[3px] border border-line-strong bg-sheet px-1.5">
+                  <select aria-label={`Papel de ${m.name}`} value={m.role} onChange={(e) => setMember.mutate({ userId: m.userId, role: e.target.value as ProjectRole })} className="h-8 rounded-md border border-line-strong bg-sheet px-1.5">
                     {Object.entries(ROLE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 ) : ROLE_LABEL[m.role]}
@@ -267,14 +267,14 @@ function MembersTab({ project, canManage }: { project: ProjectDto; canManage: bo
         >
           <label className="flex flex-col gap-1 text-[13px] font-medium text-graphite-800">
             Vincular membro
-            <select aria-label="Vincular membro" value={userId} onChange={(e) => setUserId(e.target.value)} className="h-9 min-w-64 rounded-[3px] border border-line-strong bg-sheet px-2 text-[14px] font-normal">
+            <select aria-label="Vincular membro" value={userId} onChange={(e) => setUserId(e.target.value)} className="h-9 min-w-64 rounded-md border border-line-strong bg-sheet px-2 text-[14px] font-normal">
               <option value="">{candidates.length ? 'Selecione' : 'Nenhum membro disponível'}</option>
               {candidates.map((m) => <option key={m.userId} value={m.userId}>{m.name} — {m.email}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1 text-[13px] font-medium text-graphite-800">
             Papel
-            <select aria-label="Papel" value={role} onChange={(e) => setRole(e.target.value as ProjectRole)} className="h-9 rounded-[3px] border border-line-strong bg-sheet px-2 text-[14px] font-normal">
+            <select aria-label="Papel" value={role} onChange={(e) => setRole(e.target.value as ProjectRole)} className="h-9 rounded-md border border-line-strong bg-sheet px-2 text-[14px] font-normal">
               {Object.entries(ROLE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>

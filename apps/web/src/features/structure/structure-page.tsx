@@ -57,9 +57,9 @@ export function StructurePage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {s.modules.length > 0 && <ExportButton path={`/projects/${p.id}/exports`} body={{ report: 'structure' }} />}
-          {canEdit && <Link to={`/empreendimentos/${p.id}/importacoes`} className="inline-flex h-9 items-center rounded-[3px] border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar</Link>}
+          {canEdit && <Link to={`/empreendimentos/${p.id}/importacoes`} className="inline-flex h-9 items-center rounded-md border border-line-strong bg-sheet px-3.5 text-[14px] hover:bg-paper">Importar</Link>}
           {canEdit && (
-            <Link to={`/empreendimentos/${p.id}/cadastro/assistente`} className="inline-flex h-9 items-center rounded-[3px] bg-cyan-ink px-3.5 text-[14px] font-medium text-white hover:bg-cyan-ink-dark">
+            <Link to={`/empreendimentos/${p.id}/cadastro/assistente`} className="inline-flex h-9 items-center rounded-md bg-cyan-ink px-3.5 text-[14px] font-medium text-white hover:bg-cyan-ink-dark">
               {s.modules.length ? 'Acrescentar pelo assistente' : 'Estruturar pelo assistente'}
             </Link>
           )}
@@ -71,7 +71,7 @@ export function StructurePage() {
       {s.modules.length === 0 ? (
         <EmptyState
           title="Cadastro físico vazio"
-          action={canEdit && <Link to={`/empreendimentos/${p.id}/cadastro/assistente`} className="inline-flex h-9 items-center rounded-[3px] bg-cyan-ink px-3.5 text-[14px] font-medium text-white">Estruturar pelo assistente</Link>}
+          action={canEdit && <Link to={`/empreendimentos/${p.id}/cadastro/assistente`} className="inline-flex h-9 items-center rounded-md bg-cyan-ink px-3.5 text-[14px] font-medium text-white">Estruturar pelo assistente</Link>}
         >
           O assistente cria torres, pavimentos, unidades, quadras, lotes, ruas e áreas comuns a partir de poucos parâmetros. Você revisa a prévia antes de gravar.
         </EmptyState>
@@ -147,7 +147,7 @@ function TreeEditor({ project, structure, typologies, canEdit }: { project: Proj
       <section aria-label="Árvore do cadastro" className="flex min-w-0 flex-col border border-line bg-sheet">
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
           <input type="search" aria-label="Buscar no cadastro" placeholder="Buscar por nome ou código" value={query} onChange={(e) => setQuery(e.target.value)}
-            className="h-8 min-w-0 flex-1 rounded-[3px] border border-line-strong bg-sheet px-2 text-[14px]" />
+            className="h-8 min-w-0 flex-1 rounded-md border border-line-strong bg-sheet px-2 text-[14px]" />
           <button type="button" className="text-[13px] text-cyan-ink hover:underline" onClick={() => setExpanded(new Set([...structure.modules.map((m) => m.id), ...structure.nodes.filter((n) => n.kind !== 'FLOOR' && n.kind !== 'BLOCK_QUADRA' && n.kind !== 'LOT' && n.kind !== 'STREET').map((n) => n.id)]))}>Expandir</button>
           <button type="button" className="text-[13px] text-cyan-ink hover:underline" onClick={() => setExpanded(new Set())}>Recolher</button>
           <label className="flex items-center gap-1.5 text-[13px] text-muted">
@@ -181,7 +181,7 @@ function TreeEditor({ project, structure, typologies, canEdit }: { project: Proj
                       <>
                         <span className="shrink-0 text-[12px] text-muted">{NODE_KIND_LABELS[r.node.kind as NodeKind]}</span>
                         <span className="truncate">{r.node.name}</span>
-                        {r.node.typologyId && <span className="shrink-0 rounded-[3px] bg-paper px-1.5 font-mono text-[11.5px] text-graphite-800">{typologyCode.get(r.node.typologyId)}</span>}
+                        {r.node.typologyId && <span className="shrink-0 rounded-md bg-paper px-1.5 font-mono text-[11.5px] text-graphite-800">{typologyCode.get(r.node.typologyId)}</span>}
                       </>
                     )}
                     {r.childCount > 0 && !open && <span className="shrink-0 text-[12px] text-muted">{r.descendants}</span>}

@@ -75,7 +75,7 @@ function Pending({ projectId, items, counts, canEdit, onTask }: { projectId: str
           <li key={x.id} className="flex flex-wrap items-start justify-between gap-2 border-t border-line px-3 py-2 text-[13.5px]">
             <div>
               <p><span className="text-muted">{label[x.kind]}: </span><Link className="font-medium text-cyan-ink hover:underline" to={path(x)}>{x.title}</Link></p>
-              <p className="mt-0.5 flex flex-wrap gap-1">{x.reasons.map((r) => <span key={r} className={`rounded-[3px] px-1.5 py-0.5 text-[12px] ${/pronta|pronto/.test(r) ? 'bg-ok-wash text-ok' : 'bg-warn-wash text-warn'}`}>{r}</span>)}</p>
+              <p className="mt-0.5 flex flex-wrap gap-1">{x.reasons.map((r) => <span key={r} className={`rounded-md px-1.5 py-0.5 text-[12px] ${/pronta|pronto/.test(r) ? 'bg-ok-wash text-ok' : 'bg-warn-wash text-warn'}`}>{r}</span>)}</p>
             </div>
             {canEdit && <button type="button" className="text-[12.5px] text-cyan-ink hover:underline" onClick={() => onTask({ title: `${x.kind === 'WORKBOOK_IMPORT' ? 'Concluir migração' : 'Concluir e lançar'}: ${x.title}`.slice(0, 160), link: { kind: x.kind, id: x.id } })}>Criar tarefa</button>}
           </li>

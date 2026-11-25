@@ -7,6 +7,12 @@
 - **F14 — Integração com a outra plataforma** (definir formato e autenticação com o usuário).
 - **F15 — Qualidade e produção** (itens abaixo, antes "F10").
 
+## Refinamento visual (etapas seguintes, ADR-024)
+- Etapa 3: componentes de superfície (Card, Table, Badge, Toolbar) substituindo a regra CSS transitória; grade de fichas/quadros com cabeçalho e 1ª coluna fixos, grupos de colunas e indicador de erro na célula; esqueletos de carregamento e avisos tipo toast.
+- Etapa 4: telas principais revisadas uma a uma (cadastro, EAP, quantitativos, consolidação, revisões) e tela de entrada com identidade da marca (aguardando manual de marca da empresa).
+- Etapa 5: gráficos com significado (cobertura, evolução, consolidação) e modo escuro.
+- Dividir o pacote JavaScript por rota (hoje ~1 MB, 280 kB compactado).
+
 ## Decisões da F13 a validar com o usuário
 - Cobertura da EAP = itens quantificáveis com ao menos uma medição ativa (não mede se todos os serviços vinculados foram levantados; isso aparece como "vínculos sem medição").
 - Com revisor definido, só ele aprova ou devolve; sem revisor, a tarefa é concluída por quem edita.

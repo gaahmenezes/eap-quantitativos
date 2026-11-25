@@ -116,7 +116,7 @@ function ElementTypeForm({ initial, systems, onDone }: { initial?: ElementTypeDt
     min: a.dataType === 'NUMBER' ? (a.min?.trim() || null) : null,
     max: a.dataType === 'NUMBER' ? (a.max?.trim() || null) : null,
   }));
-  const ctl = 'h-8 rounded-[3px] border border-line-strong bg-sheet px-2 text-[13.5px] min-w-0';
+  const ctl = 'h-8 rounded-md border border-line-strong bg-sheet px-2 text-[13.5px] min-w-0';
   return (
     <form className="flex flex-col gap-4" onSubmit={async (e) => {
       e.preventDefault();

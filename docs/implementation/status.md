@@ -85,6 +85,8 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F13 | Destino por linha nas fichas: uma medição por saída × destino, memória por destino, dupla contagem entre destinos | Concluída | `apps/api/test/sheet-rows.test.ts`, E2E F13 |
 | F13 | Fila de trabalho: tarefas vinculadas, responsável/revisor com edição, prazo, fluxo com revisão, transições auditadas, "Minhas tarefas" | Concluída | `apps/api/test/tasks.test.ts`, E2E F13 |
 | F13 | Centro operacional: pendências com motivos, cobertura da EAP por grupo, vínculos sem medição, fórmulas desatualizadas, alterações desde a última revisão, tarefas e atividade | Concluída | `apps/api/test/operations.test.ts`, E2E F13, revisão visual |
+| Design 1 | Base visual: Inter com algarismos tabulares, tokens de cor/raio/sombra, superfícies com sombra, ícones Lucide, botões, campos, avisos e estados vazios refeitos | Concluída | E2E completo sem mudança de seletores; revisão visual desktop e 390 px (ADR-024) |
+| Design 2 | Navegação: menu agrupado com ícones e modo recolhido, seletor de empreendimento, barra superior, busca e comandos Ctrl+K, trilha e cabeçalho de página | Concluída | E2E completo; revisão visual (busca, seletor, recolhido, gaveta no celular) |
 
 ## Contagem de testes (última execução)
 - `packages/domain`: 151 · `apps/api` (integração, Postgres real): 181 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 16

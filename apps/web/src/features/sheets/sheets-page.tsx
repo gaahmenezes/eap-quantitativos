@@ -46,7 +46,7 @@ export function SheetsPage() {
                 <td className="px-3 py-2">{s.wbsCode ? <span><span className="font-mono text-[12.5px]">{s.wbsCode}</span> {s.wbsTitle}</span> : <span className="text-muted">item da EAP não escolhido</span>}
                   <span className="block text-[12.5px] text-muted">{s.anchorLabel ?? 'âncora não escolhida'}</span></td>
                 <td className="px-3 py-2 text-right font-mono">{s.rowCount}</td>
-                <td className="px-3 py-2">{s.archivedAt ? 'arquivada' : <span className={`rounded-[3px] px-1.5 py-0.5 text-[12px] ${STATUS_TONE[s.status]}`}>{STATUS_LABEL[s.status]}</span>}
+                <td className="px-3 py-2">{s.archivedAt ? 'arquivada' : <span className={`rounded-md px-1.5 py-0.5 text-[12px] ${STATUS_TONE[s.status]}`}>{STATUS_LABEL[s.status]}</span>}
                   {s.measurementCount > 0 && <span className="block text-[12px] text-muted">{s.measurementCount} quantitativo(s)</span>}</td>
                 <td className="px-3 py-2 text-[12.5px] text-muted">{fmtDateTime(s.updatedAt)}</td>
               </tr>

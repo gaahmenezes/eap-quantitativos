@@ -24,7 +24,7 @@ export function DashboardPage() {
         <EmptyState
           title="Nenhum empreendimento ativo"
           action={can('project.create') && (
-            <Link to="/empreendimentos" className="inline-flex h-9 items-center rounded-[3px] bg-cyan-ink px-3.5 text-[14px] font-medium text-white hover:bg-cyan-ink-dark">
+            <Link to="/empreendimentos" className="inline-flex h-9 items-center rounded-md bg-cyan-ink px-3.5 text-[14px] font-medium text-white hover:bg-cyan-ink-dark">
               Cadastrar empreendimento
             </Link>
           )}

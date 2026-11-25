@@ -1,7 +1,10 @@
 import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 
 const control =
-  'w-full rounded-[3px] border border-line-strong bg-sheet px-2.5 text-[14px] text-ink placeholder:text-graphite-400 focus:border-cyan-ink focus:outline-none focus-visible:outline-2 focus-visible:outline-signal aria-[invalid=true]:border-danger';
+  'w-full rounded-md border border-line-strong bg-sheet px-3 text-[14px] text-ink shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-graphite-400 hover:border-graphite-400 focus:border-cyan-ink focus:outline-none focus:ring-[3px] focus:ring-cyan-ink/15 disabled:bg-paper disabled:text-muted aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/15';
+/** Seta do select desenhada (o nativo varia entre navegadores). */
+const chevron =
+  "appearance-none bg-[length:16px_16px] bg-[right_10px_center] bg-no-repeat pr-9 bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6579' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")]";
 
 interface FieldShellProps {
   label: string;
@@ -15,7 +18,7 @@ export function FieldShell({ label, error, hint, children }: FieldShellProps) {
   const msgId = `${id}-msg`;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-[13px] font-medium text-graphite-800">
+      <label htmlFor={id} className="text-[13px] font-medium text-ink/80">
         {label}
       </label>
       {children(id, error || hint ? msgId : undefined)}
@@ -63,7 +66,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HT
     return (
       <FieldShell label={label} error={error} hint={hint}>
         {(id, d) => (
-          <select ref={ref} id={id} aria-describedby={d} aria-invalid={!!error} className={`${control} h-9 ${className}`} {...rest}>
+          <select ref={ref} id={id} aria-describedby={d} aria-invalid={!!error} className={`${control} ${rest.multiple || rest.size ? 'py-1' : `h-9 ${chevron}`} ${className}`} {...rest}>
             {children}
           </select>
         )}

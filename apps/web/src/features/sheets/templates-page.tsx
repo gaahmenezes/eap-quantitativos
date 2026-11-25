@@ -101,7 +101,7 @@ function TemplateView({ template: t, canEdit }: { template: SheetTemplateDto; ca
           <div className="mt-2 flex flex-wrap gap-1.5" role="tablist" aria-label="Versões">
             {t.versions.map((x) => (
               <button key={x.id} type="button" role="tab" aria-selected={x.id === v.id} onClick={() => { setVid(x.id); setEditing(false); }}
-                className={`rounded-[3px] border px-2 py-0.5 font-mono text-[12.5px] ${x.id === v.id ? 'border-signal bg-cyan-wash' : 'border-line'}`}>
+                className={`rounded-md border px-2 py-0.5 font-mono text-[12.5px] ${x.id === v.id ? 'border-signal bg-cyan-wash' : 'border-line'}`}>
                 R{x.number} {x.status === 'DRAFT' ? '· rascunho' : ''}
               </button>
             ))}
@@ -140,7 +140,7 @@ function DefinitionView({ version: v }: { version: SheetTemplateVersionDto }) {
               <td className="px-3 py-1.5">{c.label}{c.required && <span className="text-danger"> *</span>}</td>
               <td className="px-3 py-1.5">{KIND[c.kind]} · {TYPE[c.type]}</td>
               <td className="px-3 py-1.5 font-mono">{c.unit ?? ''}</td>
-              <td className="px-3 py-1.5 font-mono text-[12.5px]">{c.kind === 'calc' ? c.expression : c.options?.join(' | ')}{c.defaultValue ? <span className="font-sans text-muted"> padrão: {c.defaultValue}</span> : null}</td>
+              <td className="px-3 py-1.5 font-code text-[12px]">{c.kind === 'calc' ? c.expression : c.options?.join(' | ')}{c.defaultValue ? <span className="font-sans text-muted"> padrão: {c.defaultValue}</span> : null}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -173,7 +173,7 @@ function DefinitionEditor({ templateId, version, onDone }: { templateId: string;
   const issues = useMemo(() => (units.data ? compileSheet(def as SheetDef, units.data.filter((u) => !u.archivedAt)).issues : []), [def, units.data]);
   const setCol = (i: number, patch: Partial<Col>) => setD((x) => ({ ...x, columns: x.columns.map((c, k) => (k === i ? { ...c, ...patch } : c)) }));
   const move = (i: number, dir: -1 | 1) => setD((x) => { const cs = [...x.columns]; const j = i + dir; if (j < 0 || j >= cs.length) return x; [cs[i], cs[j]] = [cs[j]!, cs[i]!]; return { ...x, columns: cs }; });
-  const input = 'h-8 w-full rounded-[3px] border border-line-strong bg-sheet px-2 text-[13px]';
+  const input = 'h-8 w-full rounded-md border border-line-strong bg-sheet px-2 text-[13px]';
   return (
     <form className="flex flex-col gap-4" onSubmit={async (e) => {
       e.preventDefault();
@@ -193,7 +193,7 @@ function DefinitionEditor({ templateId, version, onDone }: { templateId: string;
               <td className="p-1 w-20">{c.type === 'number' && <input aria-label={`Unidade da coluna ${i + 1}`} list="sheet-units" className={`${input} font-mono`} value={c.unit ?? ''} onChange={(e) => setCol(i, { unit: e.target.value || null })} />}</td>
               <td className="p-1 w-12 text-center">{c.kind === 'input' && <input type="checkbox" aria-label={`Obrigatória (coluna ${i + 1})`} checked={!!c.required} onChange={(e) => setCol(i, { required: e.target.checked })} />}</td>
               <td className="p-1">
-                {c.kind === 'calc' ? <input aria-label={`Cálculo da coluna ${i + 1}`} className={`${input} font-mono`} value={c.expression ?? ''} onChange={(e) => setCol(i, { expression: e.target.value })} />
+                {c.kind === 'calc' ? <input aria-label={`Cálculo da coluna ${i + 1}`} className={`${input} font-code`} value={c.expression ?? ''} onChange={(e) => setCol(i, { expression: e.target.value })} />
                   : c.type === 'choice' ? <input aria-label={`Opções da coluna ${i + 1}`} className={input} value={(c.options ?? []).join(' | ')} onChange={(e) => setCol(i, { options: e.target.value.split('|').map((x) => x.trim()).filter(Boolean) })} /> : null}
               </td>
               <td className="p-1 w-24">{c.kind === 'input' && <input aria-label={`Padrão da coluna ${i + 1}`} className={input} value={c.defaultValue ?? ''} onChange={(e) => setCol(i, { defaultValue: e.target.value || null })} />}</td>

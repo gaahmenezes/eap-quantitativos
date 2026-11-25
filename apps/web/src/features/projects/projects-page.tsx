@@ -50,19 +50,19 @@ export function ProjectsPage() {
             defaultValue={q}
             placeholder="Nome ou código"
             onChange={(e) => setParam('q', e.target.value)}
-            className="h-9 w-64 rounded-[3px] border border-line-strong bg-sheet px-2.5 text-[14px] font-normal"
+            className="h-9 w-64 rounded-md border border-line-strong bg-sheet px-2.5 text-[14px] font-normal"
           />
         </label>
         <label className="flex flex-col gap-1 text-[13px] font-medium text-graphite-800">
           Classificação
-          <select aria-label="Filtrar por classificação" value={classification} onChange={(e) => setParam('classificacao', e.target.value)} className="h-9 rounded-[3px] border border-line-strong bg-sheet px-2 text-[14px] font-normal">
+          <select aria-label="Filtrar por classificação" value={classification} onChange={(e) => setParam('classificacao', e.target.value)} className="h-9 rounded-md border border-line-strong bg-sheet px-2 text-[14px] font-normal">
             <option value="">Todas</option>
             {PROJECT_CLASSIFICATIONS.map((c) => <option key={c} value={c}>{PROJECT_CLASSIFICATION_LABELS[c]}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-[13px] font-medium text-graphite-800">
           Situação
-          <select aria-label="Filtrar por situação" value={status} onChange={(e) => setParam('situacao', e.target.value === 'ACTIVE' ? '' : e.target.value)} className="h-9 rounded-[3px] border border-line-strong bg-sheet px-2 text-[14px] font-normal">
+          <select aria-label="Filtrar por situação" value={status} onChange={(e) => setParam('situacao', e.target.value === 'ACTIVE' ? '' : e.target.value)} className="h-9 rounded-md border border-line-strong bg-sheet px-2 text-[14px] font-normal">
             <option value="ACTIVE">Ativos</option>
             <option value="ARCHIVED">Arquivados</option>
             <option value="ALL">Todos</option>

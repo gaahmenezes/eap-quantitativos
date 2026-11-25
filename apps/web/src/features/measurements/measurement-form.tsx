@@ -97,7 +97,7 @@ export function MeasurementForm({ projectId, wbsNodeId, service, existing, recal
             <option value="">Selecione</option>
             {versions.map((v) => <option key={v.id} value={v.id}>{v.label}{!v.latest ? ' (há versão mais nova)' : ''}</option>)}
           </SelectField>
-          {version && <p className="font-mono text-[13px] text-muted">{version.expression}</p>}
+          {version && <p className="font-code text-[13px] text-muted">{version.expression}</p>}
           {version?.variables.map((x: FormulaVariableInput) => {
             const d = all.find((u) => u.symbol === x.unit)?.dimension;
             return <ValueWithUnit key={x.symbol} label={`${x.label} (${x.symbol})`} value={inputs[x.symbol] ?? { value: '', unit: x.unit }} units={all.filter((u) => d && compatibleDimensions(u.dimension, d))} onChange={(v) => { setInputs((s) => ({ ...s, [x.symbol]: v })); reset(); }} />;

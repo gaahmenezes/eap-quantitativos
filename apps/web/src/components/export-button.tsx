@@ -1,3 +1,4 @@
+import { Download, FileSpreadsheet, FileText, FileType } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { downloadFile, errorMessage } from '../lib/api';
 import { Button } from './ui/button';
@@ -21,10 +22,10 @@ export function ExportButton({ path, body, formats = ['xlsx', 'csv', 'pdf'], lab
   const NAMES = { xlsx: 'Planilha (XLSX)', csv: 'Texto separado (CSV)', pdf: 'Relatório (PDF)' } as const;
   return (
     <div ref={ref} className="relative inline-block">
-      <Button busy={busy} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((x) => !x)}>{label}</Button>
+      <Button busy={busy} icon={Download} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((x) => !x)}>{label}</Button>
       {open && (
-        <ul role="menu" className="absolute right-0 z-20 mt-1 min-w-[200px] border border-line bg-sheet py-1 shadow-sm">
-          {formats.map((f) => <li key={f}><button type="button" role="menuitem" className="block w-full px-3 py-1.5 text-left text-[13.5px] hover:bg-cyan-wash" onClick={() => go(f)}>{NAMES[f]}</button></li>)}
+        <ul role="menu" className="absolute right-0 z-20 mt-1.5 min-w-[220px] rounded-lg border border-line bg-sheet p-1 shadow-[var(--shadow-pop)]">
+          {formats.map((f) => { const I = f === 'pdf' ? FileText : f === 'csv' ? FileType : FileSpreadsheet; return <li key={f}><button type="button" role="menuitem" className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13.5px] hover:bg-cyan-wash" onClick={() => go(f)}><I className="h-4 w-4 text-muted" aria-hidden />{NAMES[f]}</button></li>; })}
         </ul>
       )}
       {error && <p role="alert" className="absolute right-0 mt-1 w-64 text-[12.5px] text-danger">{error}</p>}

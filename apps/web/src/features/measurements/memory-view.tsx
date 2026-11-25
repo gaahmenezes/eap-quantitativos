@@ -12,7 +12,7 @@ export function MemoryView({ memory: m }: { memory: MemoryDto }) {
           <span className="text-muted">Fórmula </span>
           {m.formula && <span className="font-mono">{m.formula.code} R{m.formula.versionNumber}</span>}
           {m.formula && <span className="text-muted"> — {m.formula.name}</span>}
-          <span className="block font-mono text-[12.5px]">{m.expression}</span>
+          <span className="block font-code text-[12.5px]">{m.expression}</span>
         </p>
       ) : (
         <p className="text-muted">Quantidade informada manualmente.</p>
@@ -50,7 +50,7 @@ function SheetMemory({ memory: m }: { memory: MemoryDto }) {
       <p>
         <span className="text-muted">Ficha </span><span className="font-medium">{s.title}</span>
         <span className="text-muted"> · modelo </span><span className="font-mono">{s.template.code} R{s.template.versionNumber}</span>
-        <span className="block"><span className="text-muted">Soma da coluna </span>{s.column.label}{s.column.expression && <span className="font-mono text-[12.5px] text-muted"> = {s.column.expression}</span>}</span>
+        <span className="block"><span className="text-muted">Soma da coluna </span>{s.column.label}{s.column.expression && <span className="font-code text-[12.5px] text-muted"> = {s.column.expression}</span>}</span>
       </p>
       {s.params.length > 0 && (
         <p className="text-[12.5px]"><span className="text-muted">Parâmetros: </span>{s.params.map((x) => `${x.label} ${fmtQty(x.value)} ${x.unit}`).join(' · ')}</p>

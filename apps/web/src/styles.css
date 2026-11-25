@@ -1,52 +1,162 @@
 @import 'tailwindcss';
 
 /*
- * Tokens visuais — linguagem de prancha técnica.
- * grafite (cromo), papel (área de trabalho), cianotipia (ação primária),
- * sinalização (foco/estado ativo — usar com parcimônia).
+ * Tokens visuais — "precisão técnica premium" (ADR-024).
+ * Neutros frios e limpos, um acento cobalto para ação, profundidade por sombra sutil em vez de
+ * borda em tudo, números com algarismos tabulares. Os nomes antigos (graphite, paper, sheet, cyan-ink…)
+ * são mantidos como papéis semânticos para não reescrever as telas de uma vez.
  */
 @theme {
-  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Barlow Semi Condensed', 'Barlow', ui-sans-serif, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* Códigos e quantidades: a mesma Inter com algarismos tabulares e zero cortado (ver .font-mono abaixo). */
+  --font-mono: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* Expressões e fórmulas: monoespaçada de verdade. */
+  --font-code: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
 
-  --color-graphite-950: #141c22;
-  --color-graphite-900: #1f2a33;
-  --color-graphite-800: #2b3843;
-  --color-graphite-600: #4f5f6c;
-  --color-graphite-400: #8796a2;
-  --color-paper: #fafbfc;
+  /* Cromo (menu lateral) */
+  --color-graphite-950: #0a0f1a;
+  --color-graphite-900: #0f1626;
+  --color-graphite-800: #1a2336;
+  --color-graphite-700: #263149;
+  --color-graphite-600: #4b5670;
+  --color-graphite-400: #8e99ae;
+  --color-graphite-200: #cdd3de;
+
+  /* Superfícies e texto */
+  --color-paper: #f5f6f8;
   --color-sheet: #ffffff;
-  --color-line: #d5dbe1;
-  --color-line-strong: #aab5bf;
-  --color-ink: #1b252d;
-  --color-muted: #5b6873;
-  --color-cyan-ink: #1e5a8a;
-  --color-cyan-ink-dark: #164466;
-  --color-cyan-wash: #e8f0f7;
-  --color-signal: #e0a526;
-  --color-ok: #2f7d4f;
-  --color-ok-wash: #e6f2ea;
-  --color-danger: #b3261e;
-  --color-danger-wash: #fbeceb;
-  --color-warn: #8a5a00;
-  --color-warn-wash: #fdf4e0;
+  --color-line: #e4e7ec;
+  --color-line-strong: #cbd2dc;
+  --color-ink: #0f1728;
+  --color-muted: #5b6579;
+
+  /* Acento (ação primária, links, seleção) */
+  --color-cyan-ink: #2b59e0;
+  --color-cyan-ink-dark: #1f44b8;
+  --color-cyan-wash: #eef3ff;
+  --color-accent-soft: #c9d6ff;
+  --color-accent-on-dark: #8fa9ff;
+
+  /* Sinalização: destaque raro (cabeçalho da planilha, marcas) */
+  --color-signal: #f2a93b;
+
+  /* Estados */
+  --color-ok: #15803d;
+  --color-ok-wash: #ecfaf1;
+  --color-danger: #c4271d;
+  --color-danger-wash: #fef1f0;
+  --color-warn: #9a5b06;
+  --color-warn-wash: #fff6e5;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-xs: 0 1px 2px rgb(16 24 40 / 0.05);
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-pop: 0 4px 6px -2px rgb(16 24 40 / 0.05), 0 16px 32px -8px rgb(16 24 40 / 0.18);
 }
 
 html {
-  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* algarismos tabulares e alinhados em toda a interface; cv11 = "a" de um andar (Inter) */
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'cv11' 1;
 }
 body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 14.5px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
 }
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+/* Quantidades e códigos: tabulares, zero cortado, levemente mais densos. */
+.font-mono {
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: 'tnum' 1, 'zero' 1, 'ss01' 1;
+  letter-spacing: -0.01em;
+}
+.font-code {
+  font-family: var(--font-code);
+  font-feature-settings: 'calt' 0;
+  letter-spacing: 0;
+}
+
 :focus-visible {
-  outline: 2px solid var(--color-signal);
+  outline: 2px solid var(--color-cyan-ink);
   outline-offset: 2px;
 }
+::selection {
+  background: var(--color-accent-soft);
+}
+
+/*
+ * Superfícies: blocos "cartão" (borda + fundo branco) ganham cantos e sombra suave.
+ * Transitório até os componentes de superfície da etapa 3 (ADR-024).
+ */
+:where(div, section, nav, aside, article, ul, ol, form, fieldset, details, table).border.bg-sheet {
+  border-color: var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+:where(div, section, nav, aside, article, fieldset, details).border.bg-paper {
+  border-color: var(--color-line);
+  border-radius: var(--radius-lg);
+}
+/* Tabelas dentro de cartões não "vazam" pelos cantos arredondados. */
+:where(div, section).border.bg-sheet:has(> table),
+:where(div, section).border.bg-sheet:has(> div > table) {
+  overflow: hidden;
+}
+:where(div, section).overflow-x-auto.border.bg-sheet,
+:where(div, section).overflow-auto.border.bg-sheet {
+  overflow: auto;
+}
+thead.bg-paper,
+thead .bg-paper {
+  background: #f8f9fb;
+}
+
+/* Barra de rolagem discreta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+dialog {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+dialog::backdrop {
+  backdrop-filter: blur(2px);
+}
+dialog[data-side='right'] {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+dialog[open] {
+  animation: dialog-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+dialog[data-side='right'][open] {
+  animation: panel-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes panel-in {
+  from { opacity: 0.6; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

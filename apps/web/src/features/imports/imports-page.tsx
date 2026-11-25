@@ -104,7 +104,7 @@ function Stepper({ current }: { current: number }) {
   return (
     <ol aria-label="Etapas da importação" className="flex flex-wrap gap-x-1 gap-y-1 text-[12px]">
       {STEPS.map((s, i) => (
-        <li key={s} aria-current={i === current ? 'step' : undefined} className={`rounded-[3px] px-2 py-0.5 ${i === current ? 'bg-cyan-ink text-white' : i < current ? 'bg-cyan-wash text-cyan-ink' : 'bg-paper text-muted'}`}>{i + 1}. {s}</li>
+        <li key={s} aria-current={i === current ? 'step' : undefined} className={`rounded-md px-2 py-0.5 ${i === current ? 'bg-cyan-ink text-white' : i < current ? 'bg-cyan-wash text-cyan-ink' : 'bg-paper text-muted'}`}>{i + 1}. {s}</li>
       ))}
     </ol>
   );

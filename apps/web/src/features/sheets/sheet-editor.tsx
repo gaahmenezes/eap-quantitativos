@@ -149,7 +149,7 @@ function Editor({ projectId, sheet: s, canEdit, wbs, services, launched, onLaunc
         </div>
       )}>
         <span className="font-mono">{s.templateCode} R{s.versionNumber}</span> {s.templateName} ·{' '}
-        <span className={`rounded-[3px] px-1.5 py-0.5 text-[12px] ${s.archivedAt ? 'bg-paper text-muted' : STATUS_TONE[s.status]}`}>{s.archivedAt ? 'arquivada' : STATUS_LABEL[s.status]}</span>
+        <span className={`rounded-md px-1.5 py-0.5 text-[12px] ${s.archivedAt ? 'bg-paper text-muted' : STATUS_TONE[s.status]}`}>{s.archivedAt ? 'arquivada' : STATUS_LABEL[s.status]}</span>
         {s.launchedAt && <span> · último lançamento {fmtDateTime(s.launchedAt)}</span>}
       </PageHeader>
 

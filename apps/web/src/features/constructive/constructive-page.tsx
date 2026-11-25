@@ -321,7 +321,7 @@ function UnitPanel({ projectId, unitId, typologyId, allTypes, types, canEdit }: 
           <ul className="border border-line">{u.elements.map((e) => (
             <li key={e.stableKey} className="flex items-baseline justify-between gap-2 border-b border-line px-3 py-1.5 text-[14px] last:border-0">
               <span>{e.name} <span className="text-[12.5px] text-muted">{typeById.get(e.elementTypeId)?.name}</span></span>
-              {e.source === 'UNIT' && <span className="shrink-0 rounded-[3px] bg-warn-wash px-1.5 text-[12px]">particularidade</span>}
+              {e.source === 'UNIT' && <span className="shrink-0 rounded-md bg-warn-wash px-1.5 text-[12px]">particularidade</span>}
             </li>
           ))}</ul>
         )}

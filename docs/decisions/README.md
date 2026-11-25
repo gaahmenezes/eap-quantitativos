@@ -27,3 +27,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [021](021-quadros-de-componentes.md) | Quadros de componentes e materiais: itens × destinos e quadro de resumo lançado em medições | Aceita |
 | [022](022-migracao-de-planilhas.md) | Migração das planilhas: extrato por aba, plano com mapeamento, conferência e criação de fichas e quadros | Aceita |
 | [023](023-centro-operacional.md) | Centro operacional: painel de pendências e cobertura, fila de trabalho com revisão e destino por linha nas fichas | Aceita |
+| [024](024-linguagem-visual.md) | Linguagem visual: tokens, Inter tabular, ícones, menu agrupado e recolhível, seletor de empreendimento e busca Ctrl+K | Aceita |

@@ -169,7 +169,7 @@ function describePath(path: string, input: WizardInput): string {
 
 // ---------------- etapas ----------------
 
-const input = 'h-9 rounded-[3px] border border-line-strong bg-sheet px-2 text-[14px] min-w-0';
+const input = 'h-9 rounded-md border border-line-strong bg-sheet px-2 text-[14px] min-w-0';
 const num = `${input} w-24 text-right font-mono`;
 
 function Field({ label, children, className = '' }: { label: string; children: ReactNode; className?: string }) {

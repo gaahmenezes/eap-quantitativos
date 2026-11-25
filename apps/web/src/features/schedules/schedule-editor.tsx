@@ -143,7 +143,7 @@ function Editor({ projectId, schedule: s, canEdit, wbs, launched, onLaunched }: 
           <Button variant="primary" busy={act.pending} disabled={!ready} onClick={() => void launch()}>{dirty ? 'Salvar e lançar quantitativos' : 'Lançar quantitativos'}</Button>
         </div>
       )}>
-        {KIND_LABEL[s.kind]} · <span className={`rounded-[3px] px-1.5 py-0.5 text-[12px] ${s.archivedAt ? 'bg-paper text-muted' : STATUS_TONE[s.status]}`}>{s.archivedAt ? 'arquivado' : SCHEDULE_STATUS_LABEL[s.status]}</span>
+        {KIND_LABEL[s.kind]} · <span className={`rounded-md px-1.5 py-0.5 text-[12px] ${s.archivedAt ? 'bg-paper text-muted' : STATUS_TONE[s.status]}`}>{s.archivedAt ? 'arquivado' : SCHEDULE_STATUS_LABEL[s.status]}</span>
         {s.launchedAt && <span> · último lançamento {fmtDateTime(s.launchedAt)}</span>}
       </PageHeader>
       {launched && (
@@ -334,7 +334,7 @@ function ServiceCell({ projectId, ids, info, canEdit, rowLabel, onChange }: { pr
   return (
     <div className="relative flex min-w-[160px] flex-wrap items-center gap-1">
       {ids.map((id) => (
-        <span key={id} className="inline-flex items-center gap-1 rounded-[3px] bg-paper px-1.5 py-0.5 font-mono text-[12px]" title={info.get(id)?.description}>
+        <span key={id} className="inline-flex items-center gap-1 rounded-md bg-paper px-1.5 py-0.5 font-mono text-[12px]" title={info.get(id)?.description}>
           {info.get(id)?.code ?? '?'}<span className="font-sans text-muted">{info.get(id)?.unit}</span>
           {canEdit && <button type="button" className="text-danger" aria-label={`Retirar ${info.get(id)?.code} do ${rowLabel}`} onClick={() => onChange(ids.filter((x) => x !== id))}>×</button>}
         </span>
@@ -342,7 +342,7 @@ function ServiceCell({ projectId, ids, info, canEdit, rowLabel, onChange }: { pr
       {canEdit && ids.length < 3 && <button type="button" className="text-[12.5px] text-cyan-ink hover:underline" aria-label={`Escolher serviço do ${rowLabel}`} onClick={() => setOpen((o) => !o)}>+ serviço</button>}
       {open && (
         <div className="absolute left-0 top-full z-20 mt-1 w-80 border border-line-strong bg-sheet p-2 shadow-lg">
-          <input autoFocus type="search" aria-label="Buscar serviço" placeholder="Código ou descrição" value={q} onChange={(e) => setQ(e.target.value)} className="mb-1 h-8 w-full rounded-[3px] border border-line-strong px-2 text-[13px]" />
+          <input autoFocus type="search" aria-label="Buscar serviço" placeholder="Código ou descrição" value={q} onChange={(e) => setQ(e.target.value)} className="mb-1 h-8 w-full rounded-md border border-line-strong px-2 text-[13px]" />
           <ul aria-label="Resultados de serviços" className="max-h-60 overflow-auto text-[13px]">
             {list.map((x: ServiceDto) => (
               <li key={x.id}><button type="button" className="block w-full px-2 py-1 text-left hover:bg-cyan-wash" onClick={() => { onChange([...ids, x.id], { id: x.id, code: x.code, description: x.description, unit: x.unitSymbol }); setOpen(false); setQ(''); }}>

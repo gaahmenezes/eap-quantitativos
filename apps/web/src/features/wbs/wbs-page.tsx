@@ -226,7 +226,7 @@ function WbsEditor({ projectId, wbs, canEdit }: { projectId: string; wbs: WbsDto
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-3">
-          <input type="search" aria-label="Buscar na EAP" placeholder="Buscar por código ou título" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 w-64 max-w-full rounded-[3px] border border-line-strong bg-sheet px-2 text-[13.5px]" />
+          <input type="search" aria-label="Buscar na EAP" placeholder="Buscar por código ou título" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 w-64 max-w-full rounded-md border border-line-strong bg-sheet px-2 text-[13.5px]" />
           <label className="flex items-center gap-1.5 text-[13.5px]"><input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} /> Mostrar arquivados</label>
           <button type="button" className="text-[13.5px] text-cyan-ink hover:underline" onClick={() => setExpanded(new Set())}>Recolher</button>
           <button type="button" className="text-[13.5px] text-cyan-ink hover:underline" onClick={() => setExpanded(new Set(wbs.nodes.map((n) => n.id)))}>Expandir tudo</button>
@@ -245,8 +245,8 @@ function WbsEditor({ projectId, wbs, canEdit }: { projectId: string; wbs: WbsDto
                   <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => setSelectedId(n.id)}>
                     <span className="w-[76px] shrink-0 font-mono text-[12.5px] text-muted">{n.code}</span>
                     <span className="truncate">{n.title}</span>
-                    {n.status === 'OBSOLETE' && <span className="shrink-0 rounded-[3px] bg-warn-wash px-1.5 text-[11.5px] text-warn">obsoleto</span>}
-                    {n.origin === 'MANUAL' && <span className="shrink-0 rounded-[3px] bg-paper px-1.5 text-[11.5px] text-muted">manual</span>}
+                    {n.status === 'OBSOLETE' && <span className="shrink-0 rounded-md bg-warn-wash px-1.5 text-[11.5px] text-warn">obsoleto</span>}
+                    {n.origin === 'MANUAL' && <span className="shrink-0 rounded-md bg-paper px-1.5 text-[11.5px] text-muted">manual</span>}
                     {n.nodeType === 'ITEM' && <span className={`ml-auto shrink-0 font-mono text-[12px] ${n.serviceIds.length ? 'text-cyan-ink' : 'text-graphite-400'}`} title="Serviços vinculados">{n.serviceIds.length} serv.</span>}
                   </button>
                 </div>
@@ -366,7 +366,7 @@ function NodeServices({ projectId, node: n, editable }: { projectId: string; nod
       </ul>
       {editable && (
         <>
-          <input type="search" aria-label="Buscar serviço para vincular" placeholder="Buscar serviço para vincular" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 rounded-[3px] border border-line-strong bg-sheet px-2 text-[13.5px]" />
+          <input type="search" aria-label="Buscar serviço para vincular" placeholder="Buscar serviço para vincular" value={q} onChange={(e) => setQ(e.target.value)} className="h-8 rounded-md border border-line-strong bg-sheet px-2 text-[13.5px]" />
           {found.length > 0 && <ul className="border border-line">{found.map((s) => <li key={s.id}><button type="button" className="block w-full px-2 py-1 text-left text-[13px] hover:bg-cyan-wash" onClick={async () => { await set([...n.serviceIds, s.id]); setQ(''); }}><span className="font-mono">{s.code}</span> {s.description} <span className="font-mono text-muted">({s.unitSymbol})</span>{s.projectId && <span className="ml-1 text-muted">· do empreendimento</span>}</button></li>)}</ul>}
         </>
       )}
