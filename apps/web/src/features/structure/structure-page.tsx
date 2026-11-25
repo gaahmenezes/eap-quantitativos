@@ -112,6 +112,8 @@ function TreeEditor({ project, structure, typologies, canEdit }: { project: Proj
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(structure.modules.map((m) => m.id)));
   const [selected, setSelected] = useState<string | null>(null);
+  /** Aviso de gravação guardado fora do inspetor: ele é recriado quando a versão do item muda. */
+  const [savedNotice, setSavedNotice] = useState<{ id: string; text: string } | null>(null);
   const idx = useMemo(() => indexStructure(structure, showArchived), [structure, showArchived]);
   const rows = useMemo(() => visibleRows(idx, expanded, query), [idx, expanded, query]);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -202,7 +204,8 @@ function TreeEditor({ project, structure, typologies, canEdit }: { project: Proj
         ) : selRow.type === 'module' ? (
           <ModuleInspector key={selRow.id + selRow.module.version} projectId={project.id} module={selRow.module} canEdit={canEdit} onCreated={select} />
         ) : (
-          <NodeInspector key={selRow.id + selRow.node.version} projectId={project.id} row={selRow} idx={idx} typologies={typologies} canEdit={canEdit} onSelect={select} />
+          <NodeInspector key={selRow.id + selRow.node.version} projectId={project.id} row={selRow} idx={idx} typologies={typologies} canEdit={canEdit} onSelect={select}
+            notice={savedNotice?.id === selRow.id ? savedNotice.text : null} onNotice={(text) => setSavedNotice(text ? { id: selRow.id, text } : null)} />
         )}
       </section>
     </div>
@@ -319,8 +322,9 @@ function ModuleInspector({ projectId, module, canEdit, onCreated }: { projectId:
   );
 }
 
-function NodeInspector({ projectId, row, idx, typologies, canEdit, onSelect }: {
+function NodeInspector({ projectId, row, idx, typologies, canEdit, onSelect, notice, onNotice }: {
   projectId: string; row: Extract<TreeRow, { type: 'node' }>; idx: TreeIndex; typologies: TypologyDto[]; canEdit: boolean; onSelect: (id: string) => void;
+  notice: string | null; onNotice: (text: string | null) => void;
 }) {
   const n = row.node;
   const moduleKind = row.module.kind as ModuleKind;
@@ -351,6 +355,7 @@ function NodeInspector({ projectId, row, idx, typologies, canEdit, onSelect }: {
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     fb.clear();
+    onNotice(null);
     try {
       await mut.updateNode.mutateAsync({
         id: n.id,
@@ -361,7 +366,7 @@ function NodeInspector({ projectId, row, idx, typologies, canEdit, onSelect }: {
           ...(n.kind === 'LOT' ? { lot: { area: area.trim() || null, frontage: frontage.trim() || null } } : {}),
         },
       });
-      fb.ok('Alterações salvas.');
+      onNotice('Alterações salvas.');
     } catch (err) {
       if (err instanceof ApiError && err.code === 'VALIDATION_FAILED' && err.problem.errors?.length) {
         fb.fail(new ApiError({ ...err.problem, detail: err.problem.errors.map((x) => x.message).join(' ') }));
@@ -377,6 +382,7 @@ function NodeInspector({ projectId, row, idx, typologies, canEdit, onSelect }: {
     <div>
       <InspectorHeader kind={NODE_KIND_LABELS[n.kind as NodeKind] + (n.archivedAt ? ' · arquivado' : '')} title={n.name} code={n.code} />
       <div className="flex flex-col gap-5 px-5 py-4">
+        {notice && !fb.msg && <Notice tone="ok">{notice}</Notice>}
         {fb.msg && <Notice tone={fb.msg.tone}>{fb.msg.text}</Notice>}
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[13.5px]">
           <dt className="text-muted">Módulo</dt><dd>{row.module.name}</dd>
