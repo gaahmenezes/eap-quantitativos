@@ -23,3 +23,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [017](017-consolidacao-sql-com-referencia.md) | Consolidação em SQL validada por uma implementação de referência no domínio | Aceita |
 | [018](018-revisoes-como-fotografias.md) | Revisões do empreendimento como fotografias imutáveis | Aceita |
 | [019](019-importacao-exportacao-e-arquivos.md) | Importação em área de preparação, exportações tabulares e arquivos de origem | Aceita |
+| [020](020-fichas-de-levantamento.md) | Fichas de levantamento: modelos versionados, grade e lançamento em medições | Aceita |

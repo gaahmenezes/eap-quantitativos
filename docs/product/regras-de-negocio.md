@@ -34,6 +34,8 @@
 
 **RN‑IMP (importação)** — arquivo → staging (`ImportJob`, `ImportRow`) → mapeamento → validação (duplicados, obrigatórios, unidades, referências, disjunção) → prévia → confirmação → gravação em transação única → relatório. Nada é gravado em tabelas de domínio antes da confirmação.
 
+**RN‑FIC (fichas de levantamento, ADR-020)** — ficha = modelo publicado (colunas digitadas e calculadas, parâmetros, tabelas de consulta, saídas) + linhas digitadas do projeto + destino (item da EAP + âncora) + serviço por saída. Lançar grava uma medição por saída (método Ficha) com a memória de cada linha; relançar só revisa o que mudou; linha com erro bloqueia o lançamento; medição de ficha só muda pela ficha; dupla contagem (RN‑DUP) vale normalmente.
+
 ---
 
 

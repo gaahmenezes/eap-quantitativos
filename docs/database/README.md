@@ -97,3 +97,12 @@ Sem tabelas novas. A consolidação é uma consulta (`apps/api/src/modules/conso
 | `import_row` | Área de preparação: valores brutos, situação da validação, mensagens e dados normalizados | PK `(jobId, rowNumber)`; apagada ao cancelar |
 
 Também: `measurement_revision.documentId` (arquivo de origem, FK por organização) e o método `IMPORTED` em `MeasurementMethod`.
+
+## Tabelas (F10 — fichas de levantamento)
+| Tabela | Conteúdo | Regras no banco |
+|---|---|---|
+| `sheet_template` | Modelo de ficha da organização (código, nome) | `UNIQUE(organizationId, code)`; FK composta para versões |
+| `sheet_template_version` | Definição (colunas, parâmetros, tabelas, saídas) em JSONB, validada pelo domínio na publicação | `UNIQUE(templateId, number)`; um único rascunho por modelo (índice parcial); **publicada é imutável** (trigger) |
+| `sheet` | Ficha do empreendimento: versão do modelo, destino (item da EAP + âncora com FKs compostas por empreendimento), parâmetros, serviço por saída, linhas (JSONB), impressão digital do último lançamento | só versão **publicada** do modelo (trigger); âncora nenhuma ou exatamente uma (CHECK); **não é apagada** (trigger) |
+
+Também: `measurement.sheetId` + `sheetOutputKey` (origem da medição; imutáveis por trigger; uma medição **ativa** por saída — índice único parcial) e o método `SHEET` em `MeasurementMethod`.

@@ -66,6 +66,11 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F9 | Exportar → reimportar preserva códigos e quantidades | Concluída | `io.test.ts` (medições e cadastro), E2E |
 | F9 | Neutralização de injeção de fórmula em CSV e XLSX | Concluída | `io.test.ts` |
 | F10 | Qualidade e preparação para produção | Planejada | ver plano, seção 10 |
+| F10 | Motor de fichas no domínio: colunas digitadas/calculadas, parâmetros, tabelas de consulta, `se()`, contas na célula, validação estática de grandezas e ciclos | Concluída | `packages/domain/src/sheet/engine.test.ts` (valores das planilhas SMR I e Viva Mais Barra) |
+| F10 | Modelos de ficha versionados (rascunho, publicação imutável, nova versão, descarte, arquivamento) e 6 modelos iniciais | Concluída | `apps/api/test/sheets.test.ts`; tela Modelos de ficha; E2E F10 |
+| F10 | Fichas do empreendimento: grade com cálculo ao vivo, teclado, colar da planilha, parâmetros, destino (EAP + âncora), serviço por saída | Concluída | `sheets.test.ts`, E2E F10, revisão visual |
+| F10 | Lançamento em medições (método Ficha) com memória por linha, revisão só no que mudou, arquivamento de saídas removidas, dupla contagem e vínculo automático serviço × item | Concluída | `sheets.test.ts` (tipologia × 60 casas), E2E F10 |
+| F10 | Medição de ficha bloqueada para revisão manual; arquivar ficha arquiva seus quantitativos; isolamento entre organizações e papéis | Concluída | `sheets.test.ts` |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 100 · `apps/api` (integração, Postgres real): 138 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 12
+- `packages/domain`: 129 · `apps/api` (integração, Postgres real): 152 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 13

@@ -15,6 +15,8 @@
 | Medição / Quantitativo | Measurement + MeasurementRevision | Quantidade de um serviço, num nó da EAP, numa âncora física |
 | Memória de cálculo | MeasurementRevision | Registro imutável de como a quantidade foi obtida |
 | Revisão | ProjectRevision | Congelamento formal (R00, R01…) |
+| Modelo de ficha | SheetTemplate + SheetTemplateVersion | Planilha de levantamento padronizada da organização (colunas, cálculos, parâmetros, tabelas, saídas) |
+| Ficha de levantamento | Sheet | Planilha preenchida num empreendimento; ao lançar, as saídas viram medições |
 
 ## 5. Modelagem de domínio (inicial)
 

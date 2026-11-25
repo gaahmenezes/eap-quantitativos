@@ -1,6 +1,20 @@
 # Backlog técnico
 
-## Próximo (F10 — Qualidade e preparação para produção)
+## Roteiro a partir da F10 (centro operacional de levantamento)
+- **F11 — Quadros de componentes e materiais**: portas/esquadrias, materiais de instalações, quadros por tipologia (contagens e listas que hoje vivem nas planilhas).
+- **F12 — Migração das planilhas**: importar planilhas existentes (Marupi, Viva Mais Barra, SMR I…) para fichas, com mapeamento por aba e conferência dos totais.
+- **F13 — Centro operacional**: painel por empreendimento (fichas pendentes de lançamento, cobertura da EAP, revisões), destino por linha nas fichas, fila de trabalho da equipe.
+- **F14 — Integração com a outra plataforma** (definir formato e autenticação com o usuário).
+- **F15 — Qualidade e produção** (itens abaixo, antes "F10").
+
+## Decisões da F10 a validar com o usuário
+- Uma ficha tem um único destino (item da EAP + âncora); para pavimentos/trechos diferentes, uma ficha por destino.
+- Relançar só cria revisão quando a quantidade ou o valor de alguma linha muda; mudar só um parâmetro que não altera a saída não gera revisão.
+- Linha com erro bloqueia o lançamento inteiro (não há lançamento parcial).
+- Perda de aço inicial 0 %; transpasse 3,1 %, peça de 6 m e colchão de 0,10 m na rede (valores ajustáveis por ficha).
+- Medir a unidade inteira de uma tipologia exige um elemento-raiz (ex.: "Apartamento"); avaliar âncora coringa "unidade inteira".
+
+## F15 — Qualidade e preparação para produção (antes F10)
 - E2E completos dos cenários A–D pela interface.
 - Auditoria de segurança independente; testes de carga; avaliação de RLS no Postgres como defesa adicional.
 - Backup/restore (banco + diretório de arquivos) documentado; guia de implantação; armazenamento de objetos (S3) para os arquivos.

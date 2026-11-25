@@ -271,11 +271,18 @@ argon2id; cookie de sessão `__Host-` httpOnly/Secure/SameSite=Lax com rotação
 **Entregáveis:** importação em 9 etapas (XLSX/CSV) para serviços, cadastro físico e medições; exportações XLSX/CSV/PDF de cadastro, EAP, quantitativos, memórias, consolidações e revisões.
 **Aceite:** arquivo com duplicados/unidades inválidas/referências inexistentes gera relatório e nada é gravado sem confirmação; exportar → reimportar preserva códigos e quantidades; injeção de fórmula neutralizada.
 
-### F10 — Qualidade e preparação para produção
+### F10 — Fichas de levantamento (roteiro revisto em 2026-11-24, após análise das planilhas reais)
+**Entregáveis:** motor de fichas no domínio; modelos de ficha versionados com 6 modelos iniciais (cerâmica, parede, fôrma/concreto, aço, rede enterrada, telhado); fichas do empreendimento em grade; lançamento em medições com memória por linha (ADR-020).
+**Aceite:** valores das planilhas reais reproduzidos; lançamento sem dupla contagem; relançamento com revisão; medição de ficha não editável à mão; isolamento por organização.
+
+### F11 — Quadros de componentes e materiais · F12 — Migração das planilhas · F13 — Centro operacional · F14 — Integração com a outra plataforma
+Escopo resumido em `docs/implementation/backlog.md`; detalhamento no início de cada fase.
+
+### F15 — Qualidade e preparação para produção (antes F10)
 **Entregáveis:** E2E dos cenários A–D completos, auditoria de segurança independente (subagente dedicado), testes de carga, avaliação de RLS, backup/restore documentado, guia de deploy.
 **Aceite:** suíte completa verde; sem achados críticos/altos abertos; documentação de operação.
 
-**Dependências:** F1 → F2 → F3 → F4 → F5 → F6 → F7 → F8 → F9 → F10. F4 pode correr em paralelo a F3 (arquivos distintos); `domain/formula` e `domain/units` podem ser antecipados como pacote puro. Não abrir mais de uma fase de UI ao mesmo tempo.
+**Dependências:** F1 → … → F9 → F10 → F11 → F12 → F13 → F14 → F15. F4 pode correr em paralelo a F3 (arquivos distintos); `domain/formula` e `domain/units` podem ser antecipados como pacote puro. Não abrir mais de uma fase de UI ao mesmo tempo.
 
 ---
 
