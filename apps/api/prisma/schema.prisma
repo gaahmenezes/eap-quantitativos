@@ -59,6 +59,7 @@ model Organization {
   documents         Document[]
   importJobs        ImportJob[]
 
+  sheetTemplates SheetTemplate[]
   @@map("organization")
 }
 
@@ -162,6 +163,7 @@ model Project {
   measurements Measurement[]
   revisions    ProjectRevision[]
 
+  sheets Sheet[]
   @@unique([id, organizationId])
   @@unique([organizationId, code])
   @@index([organizationId, status])
@@ -303,6 +305,7 @@ model StructureNode {
 
   measurements Measurement[]
 
+  sheets Sheet[]
   @@unique([id, projectId])
   @@index([projectId, moduleId, parentId, position])
   @@index([projectId, path])
@@ -324,6 +327,7 @@ model DwellingUnit {
 
   measurements Measurement[]
 
+  sheets Sheet[]
   @@unique([structureNodeId, projectId])
   @@index([projectId, typologyId])
   @@map("dwelling_unit")
@@ -363,6 +367,7 @@ model DwellingTypology {
 
   measurements Measurement[]
 
+  sheets Sheet[]
   @@unique([id, projectId])
   @@unique([projectId, code])
   @@map("dwelling_typology")
@@ -537,6 +542,7 @@ model NetworkNode {
 
   measurements Measurement[]
 
+  sheets Sheet[]
   @@unique([id, projectId])
   @@unique([id, networkId])
   @@unique([networkId, code])
@@ -576,6 +582,7 @@ model NetworkSegment {
 
   measurements Measurement[]
 
+  sheets Sheet[]
   @@unique([id, projectId])
   @@unique([networkId, code])
   @@index([networkId, fromNodeId])
@@ -604,6 +611,7 @@ model PhysicalElement {
 
   measurements Measurement[]
 
+  sheets Sheet[]
   @@unique([id, projectId])
   @@index([projectId, systemId])
   @@index([projectId, structureNodeId])
@@ -917,6 +925,7 @@ model WbsNode {
 
   measurements Measurement[]
 
+  sheets Sheet[]
   @@unique([id, projectId])
   @@index([projectId, parentId, position])
   @@index([projectId, path])
@@ -964,6 +973,7 @@ enum MeasurementMethod {
   MANUAL
   FORMULA
   IMPORTED
+  SHEET
 }
 
 enum MeasurementAnchorKind {
@@ -1038,6 +1048,9 @@ model Measurement {
   elementKey        String?               @db.VarChar(80)
   /// Medição própria de uma unidade (substitui a da tipologia para aquela unidade).
   dwellingUnitId    String?               @db.Uuid
+  /// Ficha de levantamento que gerou a medição (F10) e a saída correspondente.
+  sheetId           String?               @db.Uuid
+  sheetOutputKey    String?               @db.VarChar(30)
   currentNumber     Int                   @default(1)
   quantity          Decimal               @db.Decimal(28, 10)
   archivedAt        DateTime?             @db.Timestamptz(3)
@@ -1055,9 +1068,11 @@ model Measurement {
   physicalElement PhysicalElement?      @relation(fields: [physicalElementId, projectId], references: [id, projectId], onDelete: Restrict)
   typology        DwellingTypology?     @relation(fields: [typologyId, projectId], references: [id, projectId], onDelete: Restrict)
   dwellingUnit    DwellingUnit?         @relation(fields: [dwellingUnitId, projectId], references: [structureNodeId, projectId], onDelete: Restrict)
+  sheet           Sheet?                @relation(fields: [sheetId, projectId], references: [id, projectId], onDelete: Restrict)
   revisions       MeasurementRevision[]
 
   @@unique([id, projectId])
+  @@unique([sheetId, sheetOutputKey])
   @@index([projectId, wbsNodeId, serviceId])
   @@map("measurement")
 }
@@ -1265,6 +1280,7 @@ model Document {
   revisions    MeasurementRevision[]
   importJobs   ImportJob[]
 
+  sheets Sheet[]
   @@unique([id, organizationId])
   @@unique([storageKey])
   @@index([organizationId, projectId])
@@ -1311,4 +1327,99 @@ model ImportRow {
   @@id([jobId, rowNumber])
   @@index([jobId, status])
   @@map("import_row")
+}
+
+// ===================== F10 — Fichas de levantamento =====================
+
+/// Modelo de ficha de levantamento da organização (ADR-020): colunas, parâmetros, tabelas e saídas.
+model SheetTemplate {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  organizationId String    @db.Uuid
+  code           String    @db.VarChar(30)
+  name           String    @db.VarChar(120)
+  description    String?   @db.VarChar(1000)
+  archivedAt     DateTime? @db.Timestamptz(3)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  versions     SheetTemplateVersion[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@map("sheet_template")
+}
+
+/// Versão do modelo. PUBLISHED é imutável (trigger); um único DRAFT por modelo.
+/// `definition`: SheetDef do domínio (validado na publicação).
+model SheetTemplateVersion {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  organizationId String         @db.Uuid
+  templateId     String         @db.Uuid
+  number         Int
+  status         RevisionStatus @default(DRAFT)
+  definition     Json
+  notes          String?        @db.VarChar(1000)
+  publishedAt    DateTime?      @db.Timestamptz(3)
+  publishedById  String?        @db.Uuid
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+
+  template SheetTemplate @relation(fields: [templateId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  sheets   Sheet[]
+
+  @@unique([id, organizationId])
+  @@unique([templateId, number])
+  @@map("sheet_template_version")
+}
+
+/// Ficha preenchida no empreendimento: linhas digitadas a partir da leitura do projeto.
+/// Destino (item da EAP + âncora física) e serviços por saída; "lançar" grava as medições.
+model Sheet {
+  id                String                 @id @default(uuid(7)) @db.Uuid
+  organizationId    String                 @db.Uuid
+  projectId         String                 @db.Uuid
+  templateVersionId String                 @db.Uuid
+  title             String                 @db.VarChar(160)
+  wbsNodeId         String?                @db.Uuid
+  anchorKind        MeasurementAnchorKind?
+  structureNodeId   String?                @db.Uuid
+  networkSegmentId  String?                @db.Uuid
+  networkNodeId     String?                @db.Uuid
+  physicalElementId String?                @db.Uuid
+  typologyId        String?                @db.Uuid
+  elementKey        String?                @db.VarChar(80)
+  dwellingUnitId    String?                @db.Uuid
+  /// Valores dos parâmetros desta ficha (sobrepõem os do modelo): { chave: "3.1" }.
+  params            Json                   @default("{}")
+  /// Serviço de cada saída: { saida: serviceId | null }.
+  outputMap         Json                   @default("{}")
+  /// Linhas: [{ coluna: { v, ref } }].
+  rows              Json                   @default("[]")
+  sourceReference   String?                @db.VarChar(300)
+  documentId        String?                @db.Uuid
+  /// Impressão digital do conteúdo no último lançamento (detecta alterações pendentes).
+  launchedHash      String?                @db.Char(64)
+  launchedAt        DateTime?              @db.Timestamptz(3)
+  archivedAt        DateTime?              @db.Timestamptz(3)
+  version           Int                    @default(1)
+  createdById       String                 @db.Uuid
+  createdAt         DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime               @updatedAt @db.Timestamptz(3)
+
+  project         Project              @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  templateVersion SheetTemplateVersion @relation(fields: [templateVersionId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  wbsNode         WbsNode?             @relation(fields: [wbsNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  structureNode   StructureNode?       @relation(fields: [structureNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  networkSegment  NetworkSegment?      @relation(fields: [networkSegmentId, projectId], references: [id, projectId], onDelete: Restrict)
+  networkNode     NetworkNode?         @relation(fields: [networkNodeId, projectId], references: [id, projectId], onDelete: Restrict)
+  physicalElement PhysicalElement?     @relation(fields: [physicalElementId, projectId], references: [id, projectId], onDelete: Restrict)
+  typology        DwellingTypology?    @relation(fields: [typologyId, projectId], references: [id, projectId], onDelete: Restrict)
+  dwellingUnit    DwellingUnit?        @relation(fields: [dwellingUnitId, projectId], references: [structureNodeId, projectId], onDelete: Restrict)
+  document        Document?            @relation(fields: [documentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  measurements    Measurement[]
+
+  @@unique([id, projectId])
+  @@index([projectId, archivedAt])
+  @@map("sheet")
 }
