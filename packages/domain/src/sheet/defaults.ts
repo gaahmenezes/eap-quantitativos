@@ -32,7 +32,7 @@ export const DEFAULT_SHEET_TEMPLATES: DefaultSheetTemplate[] = [
         { key: 'desconto', label: 'Desconto', kind: 'input', type: 'number', unit: 'm²' },
         { key: 'paginacao', label: 'Paginação', kind: 'input', type: 'choice', options: ['Sim', 'Não'], defaultValue: 'Sim' },
         { key: 'area_piso', label: 'Área de piso (material)', kind: 'calc', type: 'number', unit: 'm²', expression: 'se(tipo == "Revestimento"; 0; se(pecas > 0; pecas * peca_l * peca_c; area_geo))' },
-        { key: 'area_parede', label: 'Área vertical', kind: 'calc', type: 'number', unit: 'm²', expression: 'perimetro * altura - desconto' },
+        { key: 'area_parede', label: 'Área vertical', kind: 'calc', type: 'number', unit: 'm²', expression: 'se(tipo == "Revestimento" e pecas > 0; pecas * peca_l * peca_c; perimetro * altura - desconto)' },
         { key: 'area_total', label: 'Área total', kind: 'calc', type: 'number', unit: 'm²', expression: 'area_piso + area_parede' },
         { key: 'area_material', label: 'Área com perda', kind: 'calc', type: 'number', unit: 'm²', expression: 'area_total * (1 + se(paginacao == "Sim"; perda_paginada; perda_sem_paginacao))' },
         { key: 'contrapiso', label: 'Contrapiso', kind: 'calc', type: 'number', unit: 'm²', expression: 'se(tipo == "Revestimento"; 0; se(area_geo > 0; area_geo; area_piso))' },

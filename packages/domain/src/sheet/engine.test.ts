@@ -58,6 +58,12 @@ describe('CER — Viva Mais Barra, cerâmica', () => {
     expect(c.area_material!.value).toBe('25.18152');
     expect(c.rodape!.value).toBe('21.15');
   });
+  it('revestimento paginado: peças × dimensões (planilha: 16 × 0,37 × 0,59 = 3,4928 → 3,66744 com perda)', () => {
+    const x = run(tpl('CER'), [row({ ambiente: 'Cozinha', tipo: 'Revestimento', peca_l: '37', peca_c: '59', pecas: '16', altura: '1,5', paginacao: 'Sim' })]);
+    expect(x.rows[0]!.cells.area_parede!.value).toBe('3.4928');
+    expect(x.rows[0]!.cells.area_material!.value).toBe('3.66744');
+    expect(x.rows[0]!.cells.contrapiso!.value).toBe('0');
+  });
   it('sem paginação usa 13 % e área geométrica', () => {
     const x = run(tpl('CER'), [row({ ambiente: 'Banho', tipo: 'Piso', area_geo: '10', paginacao: 'Não' })]);
     expect(x.rows[0]!.cells.area_material!.value).toBe('11.3');
