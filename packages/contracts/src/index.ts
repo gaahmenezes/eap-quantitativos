@@ -13,3 +13,4 @@ export * from './revisions.js';
 export * from './io.js';
 export * from './sheets.js';
 export * from './schedules.js';
+export * from './workbooks.js';

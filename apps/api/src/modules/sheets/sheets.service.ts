@@ -88,7 +88,7 @@ export class SheetsService {
   }
 
   /** Serviços sugeridos pelo modelo (por código), se existirem no catálogo ou no empreendimento. */
-  private async suggestedMap(tx: Tx, organizationId: string, projectId: string, def: SheetDef, current: Record<string, string | null> = {}) {
+  async suggestedMap(tx: Tx, organizationId: string, projectId: string, def: SheetDef, current: Record<string, string | null> = {}) {
     const codes = def.outputs.map((o) => o.suggestedService).filter((c): c is string => !!c);
     const svcs = codes.length ? await tx.service.findMany({ where: { organizationId, code: { in: codes }, archivedAt: null, OR: [{ projectId: null }, { projectId }] }, select: { id: true, code: true, projectId: true } }) : [];
     const byCode = new Map<string, string>();

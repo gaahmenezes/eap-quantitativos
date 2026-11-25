@@ -166,6 +166,7 @@ model Project {
   sheets Sheet[]
   scheduleColumns ScheduleColumn[]
   schedules Schedule[]
+  workbookImports WorkbookImport[]
   @@unique([id, organizationId])
   @@unique([organizationId, code])
   @@index([organizationId, status])
@@ -1299,6 +1300,7 @@ model Document {
 
   sheets Sheet[]
   schedules Schedule[]
+  workbookImports WorkbookImport[]
   @@unique([id, organizationId])
   @@unique([storageKey])
   @@index([organizationId, projectId])
@@ -1551,4 +1553,54 @@ model ScheduleRowService {
 
   @@id([rowId, serviceId])
   @@map("schedule_row_service")
+}
+
+// ===================== F12 — Migração de planilhas =====================
+
+enum WorkbookImportStatus {
+  DRAFT
+  APPLIED
+  CANCELLED
+}
+
+/// Migração de uma pasta de trabalho de levantamento (ADR-022): plano por aba (ficha, quadro ou ignorar).
+model WorkbookImport {
+  id             String               @id @default(uuid(7)) @db.Uuid
+  organizationId String               @db.Uuid
+  projectId      String               @db.Uuid
+  documentId     String               @db.Uuid
+  status         WorkbookImportStatus @default(DRAFT)
+  /// Plano por aba (validado pelo contrato): destino, linhas, mapeamento de colunas e conferências.
+  plan           Json                 @default("[]")
+  /// Relatório da aplicação: o que foi criado e a conferência de cada aba.
+  result         Json?
+  version        Int                  @default(1)
+  createdById    String               @db.Uuid
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
+
+  project  Project               @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  document Document              @relation(fields: [documentId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  sheets   WorkbookImportSheet[]
+
+  @@unique([id, organizationId])
+  @@index([projectId, createdAt])
+  @@map("workbook_import")
+}
+
+/// Extrato de uma aba (valores e texto das fórmulas; nada é executado). Somente leitura após a leitura.
+model WorkbookImportSheet {
+  importId       String  @db.Uuid
+  organizationId String  @db.Uuid
+  index          Int
+  name           String  @db.VarChar(100)
+  rowCount       Int
+  colCount       Int
+  truncated      Boolean @default(false)
+  cells          Json
+
+  workbookImport WorkbookImport @relation(fields: [importId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([importId, index])
+  @@map("workbook_import_sheet")
 }

@@ -112,13 +112,24 @@ const score = (label: string, candidates: string[]) => {
   return best;
 };
 /** Sugere a coluna da planilha para cada campo (cada coluna usada uma vez; pontuação mínima 0,5). */
-export function suggestColumns(labels: string[], fields: { key: string; label: string }[]): Record<string, number> {
+export function suggestColumns(labels: string[], fields: { key: string; label: string }[], minScore = 0.5): Record<string, number> {
   const pairs: { key: string; col: number; s: number }[] = [];
-  for (const f of fields) labels.forEach((l, col) => { const s = score(l, [f.label, f.key.replace(/_/g, ' '), ...(SYNONYMS[f.key] ?? [])]); if (s >= 0.5) pairs.push({ key: f.key, col, s }); });
+  for (const f of fields) labels.forEach((l, col) => { const s = score(l, [f.label, f.key.replace(/_/g, ' '), ...(SYNONYMS[f.key] ?? [])]); if (s >= minScore) pairs.push({ key: f.key, col, s }); });
   pairs.sort((a, b) => b.s - a.s || a.col - b.col);
   const out: Record<string, number> = {}; const used = new Set<number>();
   for (const p of pairs) if (!(p.key in out) && !used.has(p.col)) { out[p.key] = p.col; used.add(p.col); }
   return out;
+}
+
+/** Par de dimensões escrito como "1,6 | x | 1,2" (três colunas): devolve as colunas dos dois números. */
+export function detectDimensionPair(s: XSheet, firstRow: number): [number, number] | null {
+  const rows = s.rows.slice(firstRow, firstRow + 40).filter((r) => r.some(Boolean));
+  const width = Math.max(0, ...rows.map((r) => r.length));
+  for (let c = 0; c + 2 < width; c++) {
+    const hits = rows.filter((r) => r[c]?.num && r[c + 2]?.num && r[c + 1] && !r[c + 1]!.num && norm(r[c + 1]!.v) === 'x').length;
+    if (hits >= 2 && hits >= rows.length * 0.3) return [c, c + 2];
+  }
+  return null;
 }
 
 // ------------------------------------------------------------------ ficha
@@ -233,6 +244,20 @@ export function normalizeUnit(raw: string, units: readonly FormulaUnit[]): strin
   if (units.some((u) => u.symbol === t)) return t;
   const a = UNIT_ALIASES[norm(t).replace(/ /g, '')] ?? UNIT_ALIASES[t.toLowerCase()];
   return a && units.some((u) => u.symbol === a) ? a : null;
+}
+
+/** Coluna cujo conteúdo é, na maioria, unidade de medida (m, und, m²…), mesmo com cabeçalho genérico ("Dimensão"). */
+export function detectUnitColumn(s: XSheet, firstRow: number, units: readonly FormulaUnit[], exclude: ReadonlySet<number> = new Set()): number | null {
+  const rows = s.rows.slice(firstRow, firstRow + 40);
+  const width = Math.max(0, ...rows.map((r) => r.length));
+  let best: number | null = null; let bestHits = 0;
+  for (let c = 0; c < width; c++) {
+    if (exclude.has(c)) continue;
+    const vals = rows.map((r) => r[c]).filter((x): x is XCell => !!x && !x.num && !!x.v.trim());
+    const hits = vals.filter((x) => normalizeUnit(x.v, units)).length;
+    if (vals.length >= 2 && hits / vals.length >= 0.6 && hits > bestHits) { best = c; bestHits = hits; }
+  }
+  return best;
 }
 
 export function buildScheduleRows(s: XSheet, plan: SchedulePlanInput, units: readonly FormulaUnit[]): { rows: BuiltScheduleRow[]; skipped: Skipped[]; check: CheckResult | null } {

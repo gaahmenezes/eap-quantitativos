@@ -5,5 +5,5 @@ import { SheetTemplatesService } from './sheet-templates.service.js';
 import { SheetsService } from './sheets.service.js';
 
 @Global()
-@Module({ imports: [MeasurementsModule], controllers: [SheetTemplatesController, SheetsController], providers: [SheetTemplatesService, SheetsService], exports: [SheetTemplatesService] })
+@Module({ imports: [MeasurementsModule], controllers: [SheetTemplatesController, SheetsController], providers: [SheetTemplatesService, SheetsService], exports: [SheetTemplatesService, SheetsService] })
 export class SheetsModule {}

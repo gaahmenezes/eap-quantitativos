@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_UNITS } from '../units/units.js';
 import { DEFAULT_SHEET_TEMPLATES } from '../sheet/defaults.js';
-import { buildScheduleRows, buildSheetRows, cellInput, colLetter, headerLabels, normalizeUnit, reconcileSheet, suggestColumns, suggestHeaderRow, suggestTarget, type XCell, type XSheet } from './workbook.js';
+import { buildScheduleRows, buildSheetRows, cellInput, detectDimensionPair, detectUnitColumn, colLetter, headerLabels, normalizeUnit, reconcileSheet, suggestColumns, suggestHeaderRow, suggestTarget, type XCell, type XSheet } from './workbook.js';
 
 const tpl = (code: string) => DEFAULT_SHEET_TEMPLATES.find((t) => t.code === code)!.definition;
 /** Monta um extrato: números viram células numéricas; "=…" vira fórmula com o valor dado em `[v, f]`. */
@@ -39,6 +39,16 @@ describe('extrato: células, cabeçalho e destino sugerido', () => {
     const def = tpl('CER');
     const m = suggestColumns(labels, def.columns.filter((c) => c.kind === 'input'));
     expect(m).toMatchObject({ tipo: 0, ambiente: 1, pecas: 5, area_geo: 7, perimetro: 9, altura: 10, desconto: 12, paginacao: 15 });
+  });
+  it('coluna de unidade detectada pelo conteúdo ("Dimensão" com m / und)', () => {
+    const s = X([['Elemento', 'tipo', 'Dimensão', 'Quantidade'], ['Tubo', '100mm', 'm', 25.2], ['Anel', '50mm', 'und', 27], ['Joelho', '40mm', 'und', 6]]);
+    expect(detectUnitColumn(s, 1, DEFAULT_UNITS)).toBe(2);
+    expect(detectUnitColumn(s, 1, DEFAULT_UNITS, new Set([2]))).toBeNull();
+  });
+  it('par de dimensões "L x A" em três colunas', () => {
+    const s = X([['Id', 'Dimensão', null, null, 'Área'], ['PA1', 0.8, 'x', 2.3, 1.84], ['J01', 1.6, 'x', 1.2, 1.92]]);
+    expect(detectDimensionPair(s, 1)).toEqual([1, 3]);
+    expect(detectDimensionPair(X([['a', 'b'], [1, 2]]), 1)).toBeNull();
   });
   it('unidades da planilha normalizadas', () => {
     expect(normalizeUnit('und', DEFAULT_UNITS)).toBe('un');
