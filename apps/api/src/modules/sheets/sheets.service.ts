@@ -48,7 +48,9 @@ function contentHash(s: Pick<Sheet, 'templateVersionId' | 'wbsNodeId' | 'params'
 /** Mantém só colunas de entrada do modelo e descarta células vazias. */
 function cleanRows(def: SheetDef, rows: UpdateSheetInput['rows'] & object) {
   const inputs = new Set(def.columns.filter((c) => c.kind === 'input').map((c) => c.key));
-  return rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k, c]) => inputs.has(k) && ((c.v ?? '').trim() || (c.ref ?? '').trim())).map(([k, c]) => [k, { ...((c.v ?? '').trim() && { v: c.v!.trim() }), ...((c.ref ?? '').trim() && { ref: c.ref!.trim() }) }])));
+  const out = rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k, c]) => inputs.has(k) && ((c.v ?? '').trim() || (c.ref ?? '').trim())).map(([k, c]) => [k, { ...((c.v ?? '').trim() && { v: c.v!.trim() }), ...((c.ref ?? '').trim() && { ref: c.ref!.trim() }) }])));
+  while (out.length && Object.keys(out[out.length - 1]!).length === 0) out.pop(); // linhas vazias no fim não são gravadas
+  return out;
 }
 
 /**

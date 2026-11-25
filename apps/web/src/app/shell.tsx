@@ -20,6 +20,7 @@ const GLOBAL: NavItem[] = [
   { label: 'Biblioteca de serviços', to: '/servicos' },
   { label: 'Templates de EAP', to: '/templates' },
   { label: 'Fórmulas', to: '/formulas' },
+  { label: 'Modelos de ficha', to: '/fichas' },
   { label: 'Administração', to: '/administracao' },
 ];
 
@@ -28,6 +29,7 @@ const PROJECT: NavItem[] = [
   { label: 'Infraestrutura', projectPath: 'infraestrutura' },
   { label: 'Construtivo', projectPath: 'construtivo' },
   { label: 'EAP', projectPath: 'eap' },
+  { label: 'Fichas de levantamento', projectPath: 'fichas' },
   { label: 'Quantitativos', projectPath: 'quantitativos' },
   { label: 'Memórias de cálculo', projectPath: 'memorias' },
   { label: 'Consolidações', projectPath: 'consolidacoes' },

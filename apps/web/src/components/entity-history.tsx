@@ -6,14 +6,14 @@ import { Loading } from './ui/feedback';
 
 const ACTION: Record<string, string> = {
   CREATE: 'Cadastro', UPDATE: 'Alteração', ARCHIVE: 'Arquivamento', UNARCHIVE: 'Restauração', MOVE: 'Movimentação', DUPLICATE: 'Duplicação',
-  SET_SERVICES: 'Serviços vinculados', PUBLISH: 'Publicação', ISSUE: 'Emissão', DELETE: 'Exclusão de rascunho',
+  SET_SERVICES: 'Serviços vinculados', PUBLISH: 'Publicação', ISSUE: 'Emissão', DELETE: 'Exclusão de rascunho', LAUNCH: 'Lançamento de quantitativos',
 };
 const FIELD: Record<string, string> = {
   title: 'Título', name: 'Nome', code: 'Código', quantity: 'Quantidade', revision: 'Revisão', method: 'Método', unit: 'Unidade', nodeType: 'Tipo',
   serviceIds: 'Serviços', parentId: 'Nó superior', position: 'Posição', description: 'Descrição',
 };
 
-const VALUE: Record<string, string> = { MANUAL: 'Manual', FORMULA: 'Fórmula', IMPORTED: 'Importada', GROUP: 'Agrupador', ITEM: 'Item quantificável' };
+const VALUE: Record<string, string> = { MANUAL: 'Manual', FORMULA: 'Fórmula', IMPORTED: 'Importada', SHEET: 'Ficha', GROUP: 'Agrupador', ITEM: 'Item quantificável' };
 const show = (v: unknown): string => {
   if (v === null || v === undefined || v === '') return '—';
   if (Array.isArray(v)) return `${v.length} item(ns)`;

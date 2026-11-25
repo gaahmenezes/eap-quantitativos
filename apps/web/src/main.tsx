@@ -1,3 +1,6 @@
+import { SheetTemplatesPage } from './features/sheets/templates-page';
+import { SheetsPage } from './features/sheets/sheets-page';
+import { SheetEditorPage } from './features/sheets/sheet-editor';
 import { ImportsPage } from './features/imports/imports-page';
 import { RevisionsPage } from './features/revisions/revisions-page';
 import { ConsolidationPage } from './features/consolidation/consolidation-page';
@@ -86,6 +89,9 @@ async function start() {
               <Route path="servicos" element={<LibraryPage />} />
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="formulas" element={<FormulasPage />} />
+              <Route path="fichas" element={<SheetTemplatesPage />} />
+              <Route path="empreendimentos/:projectId/fichas" element={<SheetsPage />} />
+              <Route path="empreendimentos/:projectId/fichas/:sheetId" element={<SheetEditorPage />} />
               <Route path="empreendimentos/:projectId/quantitativos" element={<QuantitiesPage />} />
               <Route path="empreendimentos/:projectId/memorias" element={<MemoriesPage />} />
               <Route path="empreendimentos/:projectId/consolidacoes" element={<ConsolidationPage />} />

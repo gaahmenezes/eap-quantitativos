@@ -121,9 +121,9 @@ describe('fichas do empreendimento — cerâmica da tipologia (× 60 casas)', ()
 
   it('lança: três medições pelo método Ficha, × 60 unidades, memória com as linhas', async () => {
     let d = await detail();
-    await c.patch(`${base()}/${sheetId}`, { rows: [vmb, row({}), row({ ambiente: 'Banho', tipo: 'Piso', area_geo: '3', paginacao: 'Não' })] }, ifm(d.version)).expect(204);
+    await c.patch(`${base()}/${sheetId}`, { rows: [vmb, row({}), row({ ambiente: 'Banho', tipo: 'Piso', area_geo: '3', paginacao: 'Não' }), row({}), row({ ambiente: ' ' })] }, ifm(d.version)).expect(204);
     d = await detail();
-    expect(d.rowCount).toBe(3);
+    expect(d.rowCount).toBe(3); // linhas vazias no fim descartadas; a do meio fica (ignorada no cálculo)
     const res = (await c.post(`${base()}/${sheetId}/launch`, {}, ifm(d.version)).expect(200)).body;
     expect(res).toMatchObject({ created: 3, revised: 0, archived: 0 });
     d = await detail();

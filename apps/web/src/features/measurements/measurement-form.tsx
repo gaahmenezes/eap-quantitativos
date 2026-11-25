@@ -133,7 +133,7 @@ function ValueWithUnit({ label, value, units, onChange }: { label: string; value
   );
 }
 
-function AnchorPicker({ projectId, value, onChange }: { projectId: string; value: AnchorInput | null; onChange: (a: AnchorInput | null) => void }) {
+export function AnchorPicker({ projectId, value, onChange }: { projectId: string; value: AnchorInput | null; onChange: (a: AnchorInput | null) => void }) {
   const q = useAnchors(projectId);
   const [kind, setKind] = useState<AnchorInput['kind']>('STRUCTURE_NODE');
   const [filter, setFilter] = useState('');
