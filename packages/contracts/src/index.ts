@@ -15,3 +15,4 @@ export * from './sheets.js';
 export * from './schedules.js';
 export * from './workbooks.js';
 export * from './tasks.js';
+export * from './operations.js';

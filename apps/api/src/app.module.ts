@@ -24,6 +24,7 @@ import { SheetsModule } from './modules/sheets/sheets.module.js';
 import { SchedulesModule } from './modules/schedules/schedules.module.js';
 import { WorkbooksModule } from './modules/workbooks/workbooks.module.js';
 import { TasksModule } from './modules/tasks/tasks.module.js';
+import { OperationsModule } from './modules/operations/operations.module.js';
 import { MeasurementsModule } from './modules/measurements/measurements.module.js';
 import { ConsolidationModule } from './modules/consolidation/consolidation.module.js';
 import { RevisionsModule } from './modules/revisions/revisions.module.js';
@@ -80,6 +81,7 @@ export class AppModule implements NestModule {
         SchedulesModule,
         WorkbooksModule,
         TasksModule,
+        OperationsModule,
         ConsolidationModule,
         RevisionsModule,
         DocumentsModule,
