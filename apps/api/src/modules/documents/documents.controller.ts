@@ -7,7 +7,8 @@ import { uuidPipe } from '../../common/zod.pipe.js';
 import { DocumentsService, type UploadedFile as File } from './documents.service.js';
 
 /** Upload em memória com limite rígido (o tamanho configurado é verificado de novo no serviço). */
-export const uploadInterceptor = () => FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 10 } });
+/** Nomes de arquivo em UTF-8 (o padrão do multer é latin1, que corrompe acentos: "Ã¡reas"). */
+export const uploadInterceptor = () => FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 10 }, defParamCharset: 'utf8' } as Parameters<typeof FileInterceptor>[1]);
 
 export function sendFile(res: Response, doc: { fileName: string; mime: string; size: number }, inline = false) {
   res.setHeader('Content-Type', doc.mime);

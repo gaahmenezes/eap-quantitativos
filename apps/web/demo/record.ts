@@ -23,8 +23,9 @@ await page.getByLabel('Senha').fill('senha-demonstracao-segura-2026');
 await page.getByRole('button', { name: 'Criar organização' }).click();
 await page.getByRole('heading', { name: /Olá/ }).waitFor();
 console.info('semeando…');
-const FIX = new URL('../e2e/fixtures/levantamento-exemplo.xlsx', import.meta.url).pathname;
-const ids = await seed(page, existsSync(FIX) ? readFileSync(FIX) : undefined);
+const fx = (rel: string) => new URL(rel, import.meta.url).pathname;
+const FIX = { r00: fx('../e2e/fixtures/levantamento-exemplo.xlsx'), r01: fx('../e2e/fixtures/levantamento-exemplo-r01.xlsx'), areas: fx('./fixtures/levantamento-areas-comuns.xlsx') };
+const ids = await seed(page, Object.values(FIX).every(existsSync) ? { r00: readFileSync(FIX.r00), r01: readFileSync(FIX.r01), areas: readFileSync(FIX.areas) } : undefined);
 console.info('projetos', ids);
 
 // ---- gravação: só leituras; qualquer alteração é bloqueada durante a navegação

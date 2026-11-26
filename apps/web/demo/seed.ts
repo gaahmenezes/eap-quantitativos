@@ -51,7 +51,7 @@ const item = (w: Any, title: string, path: string) => {
   return n;
 };
 
-export async function seed(page: Page, fixture?: Buffer) {
+export async function seed(page: Page, fixtures?: { r00: Buffer; r01: Buffer; areas: Buffer }) {
   const types = await call(page, 'GET', '/catalog/element-types');
   const T = (c: string) => types.find((t: Any) => t.code === c).id;
   const services = (await call(page, 'GET', '/catalog/services?limit=200')).items;
@@ -222,18 +222,22 @@ export async function seed(page: Page, fixture?: Buffer) {
     { key: 'ch', description: 'Chuveiro cromado', unit: 'un', serviceIds: [], cells: { cA: '1' } },
   ] }, lq.version);
 
-  // A: migração de planilha em preparação (arquivo de exemplo enviado pela API real)
+  // A: migrações de planilha pela API real — R00 aplicada, R01 sugerindo a atualização e uma planilha de áreas comuns
   let wbImport: string | null = null;
-  if (fixture) {
-    wbImport = (await page.evaluate(async ({ a, b64 }) => {
-      const csrf = (await (await fetch('/api/auth/me')).json()).csrfToken;
-      const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
-      const form = new FormData();
-      form.append('file', new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Levantamento VMB (exemplo).xlsx');
-      const r = await fetch(`/api/projects/${a}/workbook-imports`, { method: 'POST', body: form, headers: { 'X-CSRF-Token': csrf } });
-      if (!r.ok) throw new Error(`upload ${r.status} ${await r.text()}`);
-      return r.json();
-    }, { a, b64: fixture.toString('base64') })).id;
+  const send = async (file: Buffer, name: string) => (await page.evaluate(async ({ a, b64, name }) => {
+    const csrf = (await (await fetch('/api/auth/me')).json()).csrfToken;
+    const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
+    const r = await fetch(`/api/projects/${a}/workbook-imports`, { method: 'POST', body: form, headers: { 'X-CSRF-Token': csrf } });
+    if (!r.ok) throw new Error(`upload ${r.status} ${await r.text()}`);
+    return r.json();
+  }, { a, b64: file.toString('base64'), name })) as Any;
+  if (fixtures) {
+    const r00 = await send(fixtures.r00, 'Levantamento VMB R00.xlsx');
+    await call(page, 'POST', `/projects/${a}/workbook-imports/${r00.id}/apply`, {}, r00.version);
+    wbImport = (await send(fixtures.r01, 'Levantamento VMB R01.xlsx')).id;
+    await send(fixtures.areas, 'Levantamento áreas comuns.xlsx');
   }
 
   // Fila de trabalho (a responsável também revisa, para mostrar todas as etapas)

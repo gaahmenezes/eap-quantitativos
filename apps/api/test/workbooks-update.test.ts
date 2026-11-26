@@ -143,7 +143,8 @@ describe('atualização pela nova versão da planilha', () => {
   });
 
   it('duas abas não atualizam o mesmo destino; outro empreendimento/organização não é alvo', async () => {
-    const w3 = (await upload(c, base(), {}, 'Levantamento R02.xlsx', await workbook(1)).expect(201)).body as WorkbookImportDto;
+    const w3 = (await upload(c, base(), {}, 'Levantamento R02 — áreas e revisão.xlsx', await workbook(1)).expect(201)).body as WorkbookImportDto;
+    expect(w3.fileName).toBe('Levantamento R02 — áreas e revisão.xlsx'); // acentos no nome do arquivo preservados
     const pc = planOf(w3, 'Paredes concreto') as SheetP;
     const dup = w3.plan.map((x) => (x.target === 'schedule' ? { ...pc, sheetIndex: x.sheetIndex } : x));
     await c.put(`${base()}/${w3.id}/plan`, { sheets: dup }).set(ifm(w3.version)).expect(204);
