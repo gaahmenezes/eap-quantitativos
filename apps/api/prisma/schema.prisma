@@ -1423,6 +1423,8 @@ model Sheet {
   /// Destino próprio de cada linha (âncora; null = destino da ficha), alinhado com `rows` (F13).
   rowAnchors        Json                   @default("[]")
   sourceReference   String?                @db.VarChar(300)
+  /// Aba da planilha de origem (migração), para sugerir a atualização pela próxima versão do arquivo.
+  sourceSheetName   String?                @db.VarChar(100)
   documentId        String?                @db.Uuid
   /// Impressão digital do conteúdo no último lançamento (detecta alterações pendentes).
   launchedHash      String?                @db.Char(64)
@@ -1448,6 +1450,7 @@ model Sheet {
   tasks WorkTask[]
   @@unique([id, projectId])
   @@index([projectId, archivedAt])
+  @@index([projectId, sourceSheetName])
   @@map("sheet")
 }
 
@@ -1469,6 +1472,8 @@ model Schedule {
   kind            ScheduleKind
   title           String       @db.VarChar(160)
   sourceReference String?      @db.VarChar(300)
+  /// Aba da planilha de origem (migração), para sugerir a atualização pela próxima versão do arquivo.
+  sourceSheetName String?      @db.VarChar(100)
   documentId      String?      @db.Uuid
   launchedHash    String?      @db.Char(64)
   launchedAt      DateTime?    @db.Timestamptz(3)
@@ -1487,6 +1492,7 @@ model Schedule {
   tasks WorkTask[]
   @@unique([id, projectId])
   @@index([projectId, archivedAt])
+  @@index([projectId, sourceSheetName])
   @@map("schedule")
 }
 

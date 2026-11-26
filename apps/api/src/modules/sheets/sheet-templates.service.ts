@@ -15,12 +15,18 @@ export const sheetInvalid = (issues: { path: string; message: string }[]) =>
 export class SheetTemplatesService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
-  /** Modelos iniciais publicados (exemplos editáveis), a partir das planilhas em uso. */
+  /** Instala os modelos padrão que a organização ainda não tem (por código; arquivados contam como existentes). */
   async ensureDefaults(tx: Tx, organizationId: string) {
-    if ((await tx.sheetTemplate.count({ where: { organizationId } })) > 0) return;
+    const have = new Set((await tx.sheetTemplate.findMany({ where: { organizationId }, select: { code: true } })).map((t) => t.code));
+    const missing = DEFAULT_SHEET_TEMPLATES.filter((t) => !have.has(t.code));
+    if (!missing.length) return;
+    // duas requisições simultâneas não instalam o mesmo modelo duas vezes
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`sheet-defaults:${organizationId}`}, 0))`;
+    const again = new Set((await tx.sheetTemplate.findMany({ where: { organizationId }, select: { code: true } })).map((t) => t.code));
+    if (missing.every((t) => again.has(t.code))) return;
     const units = await loadUnits(tx, organizationId);
     if (!units.length) return;
-    for (const t of DEFAULT_SHEET_TEMPLATES) {
+    for (const t of missing.filter((m) => !again.has(m.code))) {
       if (compileSheet(t.definition, units).issues.length) continue; // unidade padrão removida pela organização
       const row = await tx.sheetTemplate.create({ data: { organizationId, code: t.code, name: t.name, description: t.description } });
       await tx.sheetTemplateVersion.create({ data: { organizationId, templateId: row.id, number: 1, status: 'PUBLISHED', publishedAt: new Date(), definition: t.definition as object, notes: 'Modelo inicial (exemplo editável).' } });
@@ -28,7 +34,8 @@ export class SheetTemplatesService {
   }
 
   async list(organizationId: string): Promise<SheetTemplateDto[]> {
-    if ((await this.prisma.sheetTemplate.count({ where: { organizationId } })) === 0) await this.prisma.$transaction((tx) => this.ensureDefaults(tx, organizationId), TX);
+    const codes = new Set((await this.prisma.sheetTemplate.findMany({ where: { organizationId }, select: { code: true } })).map((t) => t.code));
+    if (DEFAULT_SHEET_TEMPLATES.some((t) => !codes.has(t.code))) await this.prisma.$transaction((tx) => this.ensureDefaults(tx, organizationId), TX);
     const [rows, units, usage] = await Promise.all([
       this.prisma.sheetTemplate.findMany({ where: { organizationId }, orderBy: [{ archivedAt: { sort: 'asc', nulls: 'first' } }, { code: 'asc' }], include: { versions: { orderBy: { number: 'desc' } } } }),
       loadUnits(this.prisma, organizationId),

@@ -4,6 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 const SHOTS = process.env['E2E_SHOTS_DIR'];
 const uid = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 const FIXTURE = fileURLToPath(new URL('./fixtures/levantamento-exemplo.xlsx', import.meta.url));
+const FIXTURE_R01 = fileURLToPath(new URL('./fixtures/levantamento-exemplo-r01.xlsx', import.meta.url));
 
 async function apiCall(page: Page, method: string, path: string, body?: unknown) {
   return page.evaluate(async ({ method, path, body }) => {
@@ -66,7 +67,7 @@ test('migração: planilha com várias abas vira ficha e quadro, com conferênci
   await expect(hid.getByRole('region', { name: 'Verificação da aba' })).toContainText('Confere');
 
   await page.getByRole('button', { name: 'Aplicar migração' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Criar fichas e quadros' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Aplicar' }).click();
   const res = page.getByRole('region', { name: 'Resultado da migração' });
   await expect(res).toContainText('Ficha: Cerâmica MAT');
   await expect(res).toContainText('Quadro: Hidráulica da casa');
@@ -82,4 +83,62 @@ test('migração: planilha com várias abas vira ficha e quadro, com conferênci
   await res.getByRole('link', { name: 'Quadro: Hidráulica da casa' }).click();
   await expect(page.getByLabel('Descrição, item 1')).toHaveValue('Tubo pvc rigido branco');
   await expect(page.getByLabel('Casa tipo, item 2')).toHaveValue('27');
+});
+
+test('nova versão da planilha atualiza a ficha e o quadro já migrados, mostrando o que muda', async ({ page }) => {
+  await page.goto('/criar-conta');
+  await page.getByLabel('Nome da organização').fill('Construtora E2E Atualização');
+  await page.getByLabel('Seu nome').fill('Ana Ribeiro');
+  await page.getByLabel('E-mail').fill(`f12u-${uid()}@teste.com.br`);
+  await page.getByLabel('Senha').fill('senha-e2e-segura-12345');
+  await page.getByRole('button', { name: 'Criar organização' }).click();
+  await expect(page.getByRole('heading', { name: /Olá/ })).toBeVisible();
+  const p = (await apiCall(page, 'POST', '/projects', { code: `UPD-${uid()}`, name: 'Residencial Revisado', classification: 'HORIZONTAL' })).id as string;
+  const send = async (file: string, name: string) => {
+    await page.goto(`/empreendimentos/${p}/migracao`);
+    await page.getByLabel('Planilha (XLSX)').setInputFiles(file);
+    await page.getByRole('button', { name: 'Ler planilha' }).click();
+    await expect(page.getByRole('heading', { name })).toBeVisible();
+  };
+
+  // R00: migra como está
+  await send(FIXTURE, 'levantamento-exemplo.xlsx');
+  await page.getByRole('button', { name: 'Aplicar migração' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Aplicar' }).click();
+  await expect(page.getByRole('region', { name: 'Resultado da migração' })).toContainText('Ficha: Cerâmica MAT');
+
+  // R01: as mesmas abas são sugeridas como atualização
+  await send(FIXTURE_R01, 'levantamento-exemplo-r01.xlsx');
+  const abas = page.getByRole('navigation', { name: 'Abas da planilha' });
+  await expect(abas.getByRole('button', { name: /Cerâmica MAT.*Atualiza ficha: Cerâmica MAT/ })).toBeVisible();
+  await abas.getByRole('button', { name: /Cerâmica MAT/ }).click();
+  const aba = page.getByRole('region', { name: 'Aba Cerâmica MAT' });
+  await expect(aba.getByLabel('Ação', { exact: true })).toHaveValue(/.+/);
+  await expect(aba.getByLabel('Título')).toBeDisabled();
+  await aba.getByRole('button', { name: 'Verificar aba' }).click();
+  const diff = aba.getByRole('region', { name: 'Diferenças da atualização' });
+  await expect(diff).toContainText('1 nova(s) · 1 alterada(s) · 0 retirada(s) · 2 igual(is)');
+  await expect(diff.getByRole('row', { name: /^Nova Quarto 02 · Piso \+ rodapé/ })).toBeVisible();
+  await expect(diff.getByRole('row', { name: /^Alterada Quarto 01 · .*Peças \(paginação\): 25 → 27/ })).toBeVisible();
+  await expect(diff.getByRole('row', { name: 'Cerâmica (com perda) 41,50797 m² 53,6949 m² +12,18693' })).toBeVisible();
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/f12-atualizacao.png`, fullPage: true });
+
+  // Quem prefere uma ficha nova escolhe "Criar nova ficha"; aqui, mantém a atualização
+  await expect(aba.getByLabel('Ação', { exact: true }).locator('option')).toHaveText(['Criar nova ficha', 'Atualizar ficha: Cerâmica MAT (aba Cerâmica MAT)']);
+
+  await page.getByRole('button', { name: 'Aplicar migração' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Serão atualizados 2 ficha(s)/quadro(s)');
+  await page.getByRole('dialog').getByRole('button', { name: 'Aplicar' }).click();
+  const res = page.getByRole('region', { name: 'Resultado da migração' });
+  await expect(res.getByText('Atualizado', { exact: true })).toHaveCount(2);
+  await expect(res).toContainText('1 nova(s) · 1 alterada(s) · 0 retirada(s) · 2 igual(is)');
+  await res.getByRole('link', { name: 'Ficha: Cerâmica MAT' }).click();
+  await expect(page.getByLabel('Ambiente, linha 3')).toHaveValue('Quarto 02');
+  await expect(page.getByLabel('Peças (paginação), linha 2')).toHaveValue('27');
+  await page.goBack();
+  await res.getByRole('link', { name: 'Quadro: Hidraulico casa' }).click();
+  await expect(page.getByLabel('Unidade, item 2').last()).toHaveValue('30'); // destino "Unidade" (a 1ª é a unidade de medida)
+  // só uma ficha e um quadro no empreendimento: nada foi duplicado
+  expect((await apiCall(page, 'GET', `/projects/${p}/sheets`) as unknown[]).length).toBe(1);
+  expect((await apiCall(page, 'GET', `/projects/${p}/schedules`) as unknown[]).length).toBe(1);
 });

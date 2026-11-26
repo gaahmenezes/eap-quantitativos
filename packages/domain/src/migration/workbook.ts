@@ -46,12 +46,39 @@ export const isTotalRow = (row: (XCell | null)[]) => row.some((c) => c && ((!c.n
 /** Linha de cabeçalho provável: a com mais rótulos de texto entre as 20 primeiras, seguida de números. */
 export function suggestHeaderRow(s: XSheet): number {
   let best = 0; let score = -1;
+  for (const { row, texts } of headerScan(s)) if (texts > score) { best = row; score = texts; }
+  return best;
+}
+function headerScan(s: XSheet): { row: number; texts: number }[] {
+  const out: { row: number; texts: number }[] = [];
   for (let r = 0; r < Math.min(s.rows.length, 20); r++) {
     const texts = new Set((s.rows[r] ?? []).filter((c) => c && !c.num && !c.f && c.v.trim().length >= 2).map((c) => norm(c!.v))).size;
     const nextHasNumbers = s.rows.slice(r + 1, r + 4).some((row) => (row ?? []).some((c) => c?.num));
-    if (texts >= 2 && nextHasNumbers && texts > score) { best = r; score = texts; }
+    if (texts >= 2 && nextHasNumbers) out.push({ row: r, texts });
   }
-  return best;
+  return out;
+}
+/** Linhas que podem ser cabeçalho (abas com mais de um bloco têm várias); a sugerida vem primeiro. */
+export function headerCandidates(s: XSheet): number[] {
+  const best = suggestHeaderRow(s);
+  return [best, ...headerScan(s).map((h) => h.row).filter((r) => r !== best)];
+}
+
+/**
+ * Fim do bloco de dados: a linha anterior ao próximo cabeçalho diferente (≥ 3 textos, nenhum número). Cabeçalhos
+ * repetidos (mesmo conjunto de rótulos) não cortam o bloco. `null` = até o fim da aba.
+ */
+export function blockEnd(s: XSheet, headerRow: number): number | null {
+  const sig = (r: number) => (s.rows[r] ?? []).filter((c) => c && !c.num && c.v.trim()).map((c) => norm(c!.v)).filter(Boolean);
+  const mine = new Set(sig(headerRow));
+  for (let r = headerRow + 1; r < s.rows.length; r++) {
+    const row = s.rows[r] ?? [];
+    const texts = sig(r);
+    if (texts.length < 3 || row.some((c) => c?.num)) continue;
+    if (texts.filter((t) => mine.has(t)).length >= Math.ceil(texts.length * 0.8)) continue;
+    return r - 1;
+  }
+  return null;
 }
 
 /** Rótulos das colunas: texto do cabeçalho (ou da linha de cima, em cabeçalhos mesclados). */
@@ -68,27 +95,44 @@ export function headerLabels(s: XSheet, headerRow: number): string[] {
 // ------------------------------------------------------------------ destino sugerido
 
 export type SuggestedTarget = { target: 'sheet'; templateCode: string } | { target: 'schedule'; scheduleKind: 'ESQUADRIAS' | 'LOUCAS_METAIS' | 'INSTALACOES_HIDRAULICAS' | 'INSTALACOES_ELETRICAS' | 'OUTROS' } | { target: 'ignore' };
+const sheetT = (templateCode: string): SuggestedTarget => ({ target: 'sheet', templateCode });
 const RULES: [RegExp, SuggestedTarget][] = [
-  [/esquad|portas?\b|janela/, { target: 'schedule', scheduleKind: 'ESQUADRIAS' }],
-  [/louca|metais/, { target: 'schedule', scheduleKind: 'LOUCAS_METAIS' }],
-  [/hidraul|hidross|rdu material/, { target: 'schedule', scheduleKind: 'INSTALACOES_HIDRAULICAS' }],
-  [/eletric|eletrico/, { target: 'schedule', scheduleKind: 'INSTALACOES_ELETRICAS' }],
-  [/ceram|piso|revest/, { target: 'sheet', templateCode: 'CER' }],
-  [/drenag|esgoto|rede de agua|rede agua/, { target: 'sheet', templateCode: 'REDE' }],
-  [/telhado|cobert/, { target: 'sheet', templateCode: 'TELHADO' }],
-  [/concreto|forma|estrutura/, { target: 'sheet', templateCode: 'CONC' }],
-  [/\baco\b/, { target: 'sheet', templateCode: 'ACO' }],
-  [/alvenaria|pintura|chapisco|emboco|alv\b|drywall/, { target: 'sheet', templateCode: 'PAREDE' }],
-  [/consideracoes|planilha1|resumo|sienge|custo|orcament|preco/, { target: 'ignore' }],
+  [/consideracoes|planilha\d|resumo|sienge|custo|orcament|preco|\bmdo\b|mao de obra/, { target: 'ignore' }],
+  [/esquad|\besq\b|esqua\b|portas?\b|janela/, { target: 'schedule', scheduleKind: 'ESQUADRIAS' }],
+  [/louca|metais|\blou\b/, { target: 'schedule', scheduleKind: 'LOUCAS_METAIS' }],
+  [/hidraul|hidross|\bhidr\b|rdu material/, { target: 'schedule', scheduleKind: 'INSTALACOES_HIDRAULICAS' }],
+  [/eletric|eletrico|\belet\b|ilumina|luminot/, { target: 'schedule', scheduleKind: 'INSTALACOES_ELETRICAS' }],
+  [/incendio/, { target: 'schedule', scheduleKind: 'OUTROS' }],
+  [/marmore|\bmarm\b|granito|\bmar\b/, sheetT('MARM')],
+  [/imperm|\bimp\b|preparo|superficie|acabamento|\bacab\b|calcada|\bmuros?\b|mureta/, sheetT('SUP')],
+  [/terraplen|terraplan|obras em terra|movimento de terra|escavac/, sheetT('TERRA')],
+  [/ceram|piso|revest|\bpav\b/, sheetT('CER')],
+  [/drenag|esgoto|rede de agua|rede agua/, sheetT('REDE')],
+  [/telhado|cobert/, sheetT('TELHADO')],
+  [/concreto|forma|estrutura/, sheetT('CONC')],
+  [/\baco\b/, sheetT('ACO')],
+  [/alvenaria|pintura|chapisco|emboco|alv\b|drywall/, sheetT('PAREDE')],
 ];
-export function suggestTarget(name: string, labels: string[] = []): SuggestedTarget {
+const isUnitLabel = (l: string) => /^(und|unid|unidade|un|um)$/.test(l);
+const isQtyLabel = (l: string) => /^(quantidade|qtde|qtd|quant)\b/.test(l);
+/**
+ * Destino sugerido pelo nome da aba; sem regra pelo nome, pela assinatura dos cabeçalhos: perímetro + altura + área
+ * ⇒ ficha de superfícies; unidade + quantidade (rótulo ou conteúdo) ⇒ lista de materiais (quadro).
+ */
+export function suggestTarget(name: string, labels: string[] = [], opts: { unitColumn?: boolean } = {}): SuggestedTarget {
   const n = norm(name);
-  const t = RULES.find(([re]) => re.test(n))?.[1] ?? { target: 'ignore' };
-  // aba de rede com colunas "unidade" e "quantidade" é lista de materiais (quadro), não ficha de cálculo
-  const ls = labels.map(norm);
-  const isList = ls.some((l) => /^(und|unid|unidade|un|um)$/.test(l)) && ls.some((l) => /^(quantidade|qtde|qtd)\b/.test(l));
-  if (t.target === 'sheet' && t.templateCode === 'REDE' && isList) return { target: 'schedule', scheduleKind: 'OUTROS' };
-  return t;
+  const ls = labels.map(norm).filter(Boolean);
+  const isList = (ls.some(isUnitLabel) || !!opts.unitColumn) && ls.some(isQtyLabel);
+  const rule = RULES.find(([re]) => re.test(n))?.[1];
+  if (rule) {
+    // aba de rede com colunas "unidade" e "quantidade" é lista de materiais (quadro), não ficha de cálculo
+    if (rule.target === 'sheet' && rule.templateCode === 'REDE' && ls.some(isUnitLabel) && ls.some(isQtyLabel)) return { target: 'schedule', scheduleKind: 'OUTROS' };
+    return rule;
+  }
+  const has = (re: RegExp) => ls.some((l) => re.test(l));
+  if (has(/^perimetro/) && has(/^(h parede|altura)/) && has(/^area/)) return sheetT('SUP');
+  if (isList) return { target: 'schedule', scheduleKind: 'OUTROS' };
+  return { target: 'ignore' };
 }
 
 // ------------------------------------------------------------------ mapeamento sugerido
@@ -97,7 +141,13 @@ const SYNONYMS: Record<string, string[]> = {
   ambiente: ['ambiente', 'local', 'comodo'], tipo: ['tipologia', 'tipo'], pecas: ['pecas', 'pecas ambiente', 'qtde pecas'],
   area_geo: ['area geometrica', 'area gemometrica', 'area de projeto'], perimetro: ['perimetro'], altura: ['altura', 'h parede', 'h rodape', 'altura paredes'],
   desconto: ['desconto', 'area de desconto'], paginacao: ['paginacao', 'utilizou paginacao'], comprimento: ['comprimento', 'extensao', 'dimensao', 'perimetro'],
-  largura: ['largura'], quantidade: ['quantidade', 'qtde', 'qtd'], elemento: ['elemento', 'identificacao', 'descricao'], espessura: ['espessura', 'espessura do concreto'],
+  largura: ['largura', 'largura de vala'], quantidade: ['quantidade', 'qtde', 'qtd'], elemento: ['elemento', 'identificacao', 'descricao'], espessura: ['espessura', 'espessura do concreto'],
+  // superfícies (SUP), mármore (MARM) e movimento de terra (TERRA)
+  servico: ['tipologia', 'servico', 'material', 'descricao'], local: ['local', 'ambiente'], piso: ['area de piso', 'area piso', 'area teto', 'area teto piso', 'area do ambiente'],
+  repeticoes: ['n de rep', 'n de rep unid hab', 'quant utilizacao', 'repeticoes'], parede_bruta: ['area parede sem desconto'], parede_liq: ['area parede com desconto'],
+  area_unid: ['area total da unidade material', 'area total da unidade', 'area'], total_obra: ['area total da obra', 'area total da obra ambiente'],
+  peca: ['tipologia', 'peca', 'descricao'], area_total: ['area total'], metros: ['metros', 'metro linear', 'metros lineares'],
+  volume: ['volume geometrico', 'volume'], vol_empolado: ['volume com empolamento'], empolamento: ['empolamento', 'taxa de empolamento'], area: ['area'],
   area_laje: ['area lajes', 'area laje'], trecho: ['trecho', 'pv', 'id'], dn: ['dn', 'diametro', 'diametro nominal'], inclinacao: ['inclinacao', 'declividade'],
   profundidade: ['profundidade', 'prof'], material: ['material'], bitola: ['bitola', 'diametro'], tela: ['tela'], pano: ['id', 'pano', 'peca'],
   // quadros
@@ -117,9 +167,15 @@ const score = (label: string, candidates: string[]) => {
   return best;
 };
 /** Sugere a coluna da planilha para cada campo (cada coluna usada uma vez; pontuação mínima 0,5). */
+/** Rótulos que parecem o campo mas não são (ex.: "Área Parede (sem desconto)" não é o desconto). */
+const NOT_FIELD: Record<string, RegExp> = { desconto: /\b(sem|com) desconto\b/ };
 export function suggestColumns(labels: string[], fields: { key: string; label: string }[], minScore = 0.5): Record<string, number> {
   const pairs: { key: string; col: number; s: number }[] = [];
-  for (const f of fields) labels.forEach((l, col) => { const s = score(l, [f.label, f.key.replace(/_/g, ' '), ...(SYNONYMS[f.key] ?? [])]); if (s >= minScore) pairs.push({ key: f.key, col, s }); });
+  for (const f of fields) labels.forEach((l, col) => {
+    if (NOT_FIELD[f.key]?.test(norm(l))) return;
+    const s = score(l, [f.label, f.key.replace(/_/g, ' '), ...(SYNONYMS[f.key] ?? [])]);
+    if (s >= minScore) pairs.push({ key: f.key, col, s });
+  });
   pairs.sort((a, b) => b.s - a.s || a.col - b.col);
   const out: Record<string, number> = {}; const used = new Set<number>();
   for (const p of pairs) if (!(p.key in out) && !used.has(p.col)) { out[p.key] = p.col; used.add(p.col); }
@@ -152,7 +208,18 @@ export interface SheetPlan {
 export interface Skipped { row: number; reason: string }
 export interface BuiltSheet { rows: SheetRowInput[]; sourceRows: number[]; skipped: Skipped[] }
 
-const unitOf = (units: readonly FormulaUnit[], s: string | null | undefined) => (s ? units.find((u) => u.symbol === s) : undefined);
+/**
+ * Unidade de coluna só da migração: número decimal que representa porcentagem (0,35 = 35%). Convertida pelo fator 1
+ * para colunas em % da ficha.
+ */
+export const FRACTION = 'fração';
+const FRACTION_UNIT: FormulaUnit = { symbol: FRACTION, dimension: { L: 0, M: 0, T: 0, N: 0 }, factor: '1' };
+const unitOf = (units: readonly FormulaUnit[], s: string | null | undefined) => (s === FRACTION ? FRACTION_UNIT : s ? units.find((u) => u.symbol === s) : undefined);
+/** A coluna tem só números entre 0 e 1 (porcentagem escrita como fração na planilha). */
+export function looksLikeFraction(s: XSheet, col: number, firstRow: number): boolean {
+  const ns = s.rows.slice(firstRow, firstRow + 60).map((r) => r[col]).filter((c): c is XCell => !!c?.num).map((c) => new D(c.v));
+  return ns.length > 0 && ns.some((n) => !n.isZero()) && ns.every((n) => n.gte(0) && n.lte(1));
+}
 const convert = (text: string, from: FormulaUnit, to: FormulaUnit): string => {
   const v = evaluateCellNumber(text);
   return v.times(from.factor).div(to.factor).toDecimalPlaces(10).toFixed();
@@ -186,10 +253,21 @@ export function buildSheetRows(s: XSheet, plan: SheetPlan, def: SheetDef, units:
       out[col.key] = { v: text, ref: `${s.name}!${colLetter(m.col)}${r + 1}` };
     }
     if (problem) { skipped.push({ row: r + 1, reason: problem }); continue; }
-    if (isBlankRow(out)) continue;
+    if (isBlankRow(out) || isEmptyTemplateRow(out, def)) continue;
+    if (!def.columns.some((c) => c.type === 'number' && out[c.key]?.v)) { skipped.push({ row: r + 1, reason: 'Sem valores numéricos (título?)' }); continue; }
     rows.push(out); sourceRows.push(r + 1);
   }
   return { rows, sourceRows, skipped };
+}
+
+/** Linha de modelo vazia da planilha: sem texto e só zeros (ex.: fórmulas sem valor e "0" no desconto). */
+function isEmptyTemplateRow(out: SheetRowInput, def: SheetDef): boolean {
+  return def.columns.every((c) => {
+    const v = out[c.key]?.v;
+    if (!v) return true;
+    if (c.type !== 'number') return false;
+    try { return evaluateCellNumber(v).isZero(); } catch { return false; }
+  });
 }
 
 export interface CheckRow { row: number; expected: string | null; computed: string | null; delta: string | null; ok: boolean }

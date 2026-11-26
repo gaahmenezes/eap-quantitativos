@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { SCHEDULE_KINDS, type ScheduleKind, type WorkbookImportDto, type WorkbookPreviewDto, type WorkbookSheetDto, type WorkbookSheetPlan } from '@eapq/contracts';
+import { SCHEDULE_KINDS, type ScheduleKind, type WorkbookImportDto, type WorkbookPreviewDto, type WorkbookSheetDto, type WorkbookSheetPlan, type WorkbookUpdatableDto, type WorkbookUpdateDiffDto } from '@eapq/contracts';
 import { colLetter, projectPermissions, type SheetDef } from '@eapq/domain';
 import { Breadcrumbs, PageHeader } from '../../app/shell';
 import { useAction } from '../../components/ui/actions';
@@ -20,7 +20,9 @@ import { STATUS, useWorkbookImport, useWorkbookSheet, wbKeys } from './api';
 type Plan = WorkbookSheetPlan;
 type SheetP = Extract<Plan, { target: 'sheet' }>;
 type SchedP = Extract<Plan, { target: 'schedule' }>;
-interface Tpl { versionId: string; code: string; name: string; number: number; def: SheetDef }
+interface Tpl { versionId: string; templateId: string; code: string; name: string; number: number; def: SheetDef }
+/** Unidade só da migração: número decimal que é porcentagem (0,35 = 35%). */
+const FRACTION = 'fração';
 
 export function WorkbookWizardPage() {
   const { projectId = '', importId = '' } = useParams();
@@ -35,7 +37,7 @@ export function WorkbookWizardPage() {
   const canEdit = projectPermissions(me!.orgRole, p.myProjectRole).has('project.content.edit') && p.status === 'ACTIVE' && w.data.status === 'DRAFT';
   const tpls: Tpl[] = (templates.data ?? []).filter((t) => !t.archivedAt).flatMap((t) => {
     const v = t.versions.find((x) => x.status === 'PUBLISHED');
-    return v ? [{ versionId: v.id, code: t.code, name: t.name, number: v.number, def: v.definition as SheetDef }] : [];
+    return v ? [{ versionId: v.id, templateId: t.id, code: t.code, name: t.name, number: v.number, def: v.definition as SheetDef }] : [];
   });
   return (
     <>
@@ -89,7 +91,8 @@ function Wizard({ projectId, w, tpls, canEdit }: { projectId: string; w: Workboo
           <label className="flex items-center gap-1.5 border-b border-line px-3 py-2 text-[13px]"><input type="checkbox" checked={onlyPlanned} onChange={(e) => setOnlyPlanned(e.target.checked)} /> Só abas com destino</label>
           <ul className="max-h-[70vh] overflow-auto">{plans.filter((x) => !onlyPlanned || x.target !== 'ignore').map((x) => {
             const s = w.sheets.find((y) => y.index === x.sheetIndex)!;
-            const label = x.target === 'sheet' ? `Ficha ${tpls.find((t) => t.versionId === x.templateVersionId)?.code ?? ''}` : x.target === 'schedule' ? `Quadro · ${KIND_LABEL[x.scheduleKind]}` : 'Ignorar';
+            const upd = x.target !== 'ignore' && x.updateOf ? w.updatable.find((u) => u.id === x.updateOf!.id) : undefined;
+            const label = upd ? `Atualiza ${upd.kind === 'sheet' ? 'ficha' : 'quadro'}: ${upd.title}` : x.target === 'sheet' ? `Ficha ${tpls.find((t) => t.versionId === x.templateVersionId)?.code ?? w.updatable.find((u) => u.templateVersionId === x.templateVersionId)?.templateCode ?? ''}` : x.target === 'schedule' ? `Quadro · ${KIND_LABEL[x.scheduleKind]}` : 'Ignorar';
             return (
               <li key={x.sheetIndex}>
                 <button type="button" onClick={() => setCurrent(x.sheetIndex)} aria-current={x.sheetIndex === current ? 'true' : undefined}
@@ -106,9 +109,17 @@ function Wizard({ projectId, w, tpls, canEdit }: { projectId: string; w: Workboo
       </div>
       <ConfirmDialog open={confirm} title="Aplicar migração" onClose={() => setConfirm(false)} footer={<>
         <Button variant="ghost" onClick={() => setConfirm(false)}>Voltar</Button>
-        <Button variant="primary" busy={act.pending} onClick={async () => { await apply(); setConfirm(false); }}>Criar fichas e quadros</Button>
+        <Button variant="primary" busy={act.pending} onClick={async () => { await apply(); setConfirm(false); }}>Aplicar</Button>
       </>}>
-        <p>Serão criadas {planned.filter((x) => x.target === 'sheet').length} ficha(s) e {planned.filter((x) => x.target === 'schedule').length} quadro(s) neste empreendimento, com a origem de cada célula. Nada é lançado em quantitativos: depois, em cada ficha ou quadro, escolha o destino e lance.</p>
+        {(() => {
+          const upd = planned.filter((x) => 'updateOf' in x && x.updateOf);
+          const neu = planned.filter((x) => !('updateOf' in x && x.updateOf));
+          return <>
+            {neu.length > 0 && <p>Serão criadas {neu.filter((x) => x.target === 'sheet').length} ficha(s) e {neu.filter((x) => x.target === 'schedule').length} quadro(s), com a origem de cada célula.</p>}
+            {upd.length > 0 && <p className={neu.length ? 'mt-2' : ''}>Serão atualizados {upd.length} ficha(s)/quadro(s) existentes pela nova versão da planilha: as linhas casadas mantêm o destino por linha e os serviços; as que saíram da planilha são retiradas.</p>}
+            <p className="mt-2">Nada é lançado em quantitativos. O que já foi lançado fica “alterado desde o lançamento” até você relançar.</p>
+          </>;
+        })()}
         {planned.some((x) => !previews[x.sheetIndex]) && <p className="mt-2 text-warn">Há abas ainda não verificadas; a aplicação revalida tudo e recusa se houver erro.</p>}
       </ConfirmDialog>
     </>
@@ -122,20 +133,24 @@ function Result({ projectId, w }: { projectId: string; w: WorkbookImportDto }) {
       {w.status === 'CANCELLED' && <Notice tone="info">Migração cancelada: nada foi criado.</Notice>}
       {w.result && (
         <section aria-label="Resultado da migração" className="border border-line bg-sheet">
-          <h2 className="px-3 py-2 font-medium">Criado a partir da planilha</h2>
+          <h2 className="px-3 py-2 font-medium">Criado ou atualizado a partir da planilha</h2>
           <table className="w-full text-left text-[13.5px]">
-            <thead className="bg-paper text-[12px] text-muted"><tr><th className="px-3 py-1 font-normal">Aba</th><th className="px-3 py-1 font-normal">Criado</th><th className="px-3 py-1 text-right font-normal">Linhas</th><th className="px-3 py-1 text-right font-normal">Ignoradas</th><th className="px-3 py-1 font-normal">Conferência</th></tr></thead>
+            <thead className="bg-paper text-[12px] text-muted"><tr><th className="px-3 py-1 font-normal">Aba</th><th className="px-3 py-1 font-normal">Resultado</th><th className="px-3 py-1 text-right font-normal">Linhas</th><th className="px-3 py-1 text-right font-normal">Ignoradas</th><th className="px-3 py-1 font-normal">Conferência</th></tr></thead>
             <tbody>{w.result.created.map((c) => (
               <tr key={c.id} className="border-t border-line">
                 <td className="px-3 py-1.5">{c.sheetName}</td>
-                <td className="px-3 py-1.5"><Link className="text-cyan-ink hover:underline" to={`/empreendimentos/${projectId}/${c.kind === 'sheet' ? 'fichas' : 'quadros'}/${c.id}`}>{c.kind === 'sheet' ? 'Ficha' : 'Quadro'}: {c.title}</Link></td>
+                <td className="px-3 py-1.5">
+                  <span className="mr-1 text-[12px] text-muted">{c.action === 'updated' ? 'Atualizado' : 'Criado'}</span>
+                  <Link className="text-cyan-ink hover:underline" to={`/empreendimentos/${projectId}/${c.kind === 'sheet' ? 'fichas' : 'quadros'}/${c.id}`}>{c.kind === 'sheet' ? 'Ficha' : 'Quadro'}: {c.title}</Link>
+                  {c.counts && <span className="block text-[12px] text-muted">{c.counts.added} nova(s) · {c.counts.changed} alterada(s) · {c.counts.removed} retirada(s) · {c.counts.unchanged} igual(is)</span>}
+                </td>
                 <td className="px-3 py-1.5 text-right font-mono">{c.rows}</td>
                 <td className="px-3 py-1.5 text-right font-mono">{c.skipped}</td>
                 <td className="px-3 py-1.5">{c.checksOk === null ? <span className="text-muted">sem conferência</span> : c.checksOk ? <span className="text-ok">confere</span> : <span className="text-warn">com divergências</span>}</td>
               </tr>
             ))}</tbody>
           </table>
-          <p className="px-3 py-2 text-[13px] text-muted">Próximo passo: em cada ficha ou quadro, escolha o item da EAP e a âncora (e os serviços dos itens dos quadros) e lance os quantitativos.</p>
+          <p className="px-3 py-2 text-[13px] text-muted">Próximo passo: nas fichas e quadros criados, escolha o item da EAP e a âncora (e os serviços dos itens dos quadros) e lance; nos atualizados que já estavam lançados, relance para revisar as medições.</p>
         </section>
       )}
     </>
@@ -177,13 +192,15 @@ function SheetEditor({ projectId, w, plan, tpls, canEdit, onChange, preview, onP
         <SelectField label="Destino da aba" value={plan.target} disabled={!canEdit} onChange={(e) => onChange(e.target.value === 'sheet' ? toSheet() : e.target.value === 'schedule' ? toSched() : { sheetIndex: plan.sheetIndex, target: 'ignore' })}>
           <option value="ignore">Ignorar</option><option value="sheet">Ficha de levantamento</option><option value="schedule">Quadro de componentes</option>
         </SelectField>
-        {plan.target === 'sheet' && <SelectField label="Modelo de ficha" value={plan.templateVersionId} disabled={!canEdit} onChange={(e) => onChange({ ...toSheet(e.target.value), title: plan.title, headerRow: plan.headerRow, firstRow: plan.firstRow, lastRow: plan.lastRow })}>
+        {plan.target === 'sheet' && <SelectField label="Modelo de ficha" value={plan.templateVersionId} disabled={!canEdit || !!plan.updateOf} onChange={(e) => onChange({ ...toSheet(e.target.value), title: plan.title, headerRow: plan.headerRow, firstRow: plan.firstRow, lastRow: plan.lastRow })}>
           {tpls.map((t) => <option key={t.versionId} value={t.versionId}>{t.code} R{t.number} — {t.name}</option>)}
+          {!tpls.some((t) => t.versionId === plan.templateVersionId) && <option value={plan.templateVersionId}>{w.updatable.find((u) => u.templateVersionId === plan.templateVersionId)?.templateCode ?? 'Modelo'} — versão usada pela ficha</option>}
         </SelectField>}
         {plan.target === 'schedule' && <SelectField label="Tipo de quadro" value={plan.scheduleKind} disabled={!canEdit} onChange={(e) => onChange({ ...plan, scheduleKind: e.target.value as ScheduleKind })}>
           {SCHEDULE_KINDS.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
         </SelectField>}
-        {plan.target !== 'ignore' && <TextField label="Título" value={plan.title} disabled={!canEdit} onChange={(e) => onChange({ ...plan, title: e.target.value })} />}
+        {plan.target !== 'ignore' && <UpdateSelect plan={plan} w={w} tpls={tpls} canEdit={canEdit} onChange={onChange} />}
+        {plan.target !== 'ignore' && <TextField label="Título" value={plan.title} disabled={!canEdit || !!plan.updateOf} onChange={(e) => onChange({ ...plan, title: e.target.value })} hint={plan.updateOf ? 'Mantém o título atual.' : undefined} />}
         {plan.target !== 'ignore' && <>
           <TextField label="Linha do cabeçalho" type="number" min={1} value={String(plan.headerRow + 1)} disabled={!canEdit} onChange={(e) => { const v = num(e.target.value); if (v !== null && v >= 0) onChange({ ...plan, headerRow: v, firstRow: Math.max(plan.firstRow, v + 1) }); }} />
           <TextField label="Primeira linha de dados" type="number" min={1} value={String(plan.firstRow + 1)} disabled={!canEdit} onChange={(e) => { const v = num(e.target.value); if (v !== null && v >= 0) onChange({ ...plan, firstRow: v }); }} />
@@ -204,6 +221,7 @@ function SheetEditor({ projectId, w, plan, tpls, canEdit, onChange, preview, onP
         </div>
       )}
       {act.error && <Notice tone="danger">{act.error}</Notice>}
+      {preview?.update && <UpdateReport u={preview.update} canEdit={canEdit} onUseCurrent={() => plan.target !== 'ignore' && plan.updateOf && onChange({ ...plan, updateOf: { id: plan.updateOf.id, version: preview.update!.currentVersion } })} />}
       {preview && <PreviewReport r={preview} />}
     </section>
   );
@@ -262,7 +280,7 @@ function SheetMapping({ plan, tpl, colOpts, canEdit, onChange }: { plan: SheetP;
     if (col === undefined) delete next[key]; else next[key] = { col, ...(unit ? { unit } : {}) };
     onChange({ ...plan, [field]: next });
   };
-  const unitsFor = (u: string | null | undefined) => (u === 'cm' || u === 'mm' || u === 'm' ? ['m', 'cm', 'mm'] : u === 'm²' ? ['m²', 'cm²'] : u === 'kg' ? ['kg', 't'] : u ? [u] : []);
+  const unitsFor = (u: string | null | undefined) => (u === 'cm' || u === 'mm' || u === 'm' ? ['m', 'cm', 'mm'] : u === 'm²' ? ['m²', 'cm²'] : u === 'kg' ? ['kg', 't'] : u === '%' ? ['%', FRACTION] : u ? [u] : []);
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <fieldset className="border border-line bg-sheet p-3">
@@ -276,7 +294,7 @@ function SheetMapping({ plan, tpl, colOpts, canEdit, onChange }: { plan: SheetP;
                 <ColSelect label={`${c.label}${c.required ? ' *' : ''}`} value={m?.col} colOpts={colOpts} canEdit={canEdit} onChange={(v) => set('map', c.key, v, m?.unit)} />
                 {opts.length > 1 ? (
                   <SelectField label={`Unidade de ${c.label}`} value={m?.unit ?? c.unit ?? ''} disabled={!canEdit || !m} onChange={(e) => set('map', c.key, m?.col, e.target.value === c.unit ? null : e.target.value)}>
-                    {opts.map((u) => <option key={u} value={u}>{u}</option>)}
+                    {opts.map((u) => <option key={u} value={u}>{u === FRACTION ? 'fração (0,35 = 35%)' : u}</option>)}
                   </SelectField>
                 ) : <span className="pb-2 font-mono text-[12px] text-muted">{c.unit ?? ''}</span>}
               </div>
@@ -381,6 +399,68 @@ function PreviewReport({ r }: { r: WorkbookPreviewDto }) {
           </div>
         </details>
       )}
+    </section>
+  );
+}
+
+/** Criar novo ou atualizar uma ficha/quadro existente (mesmo modelo / mesmo número de colunas de quantidade). */
+function UpdateSelect({ plan, w, tpls, canEdit, onChange }: { plan: SheetP | SchedP; w: WorkbookImportDto; tpls: Tpl[]; canEdit: boolean; onChange: (p: Plan) => void }) {
+  const templateId = plan.target === 'sheet' ? tpls.find((t) => t.versionId === plan.templateVersionId)?.templateId ?? w.updatable.find((u) => u.templateVersionId === plan.templateVersionId)?.templateId : null;
+  const fits = (u: WorkbookUpdatableDto) => (plan.target === 'sheet' ? u.kind === 'sheet' && u.templateId === templateId : u.kind === 'schedule');
+  const options = w.updatable.filter(fits);
+  const pick = (id: string) => {
+    if (!id) { const { updateOf: _u, ...rest } = plan; onChange(rest as Plan); return; }
+    const u = w.updatable.find((x) => x.id === id)!;
+    if (plan.target === 'sheet') onChange({ ...plan, title: u.title, templateVersionId: u.templateVersionId ?? plan.templateVersionId, updateOf: { id: u.id, version: u.version } });
+    else onChange({ ...plan, title: u.title, quantities: u.columns.map((label, i) => ({ col: plan.quantities[i]?.col ?? plan.quantities[plan.quantities.length - 1]!.col, label })), updateOf: { id: u.id, version: u.version } });
+  };
+  const what = plan.target === 'sheet' ? 'ficha' : 'quadro';
+  return (
+    <SelectField label="Ação" value={plan.updateOf?.id ?? ''} disabled={!canEdit || (!options.length && !plan.updateOf)} onChange={(e) => pick(e.target.value)}
+      hint={options.length ? `Nova versão da planilha? Atualize ${plan.target === 'sheet' ? 'a ficha' : 'o quadro'} em vez de criar outro.` : undefined}>
+      <option value="">{plan.target === 'sheet' ? 'Criar nova ficha' : 'Criar novo quadro'}</option>
+      {options.map((u) => <option key={u.id} value={u.id}>Atualizar {what}: {u.title}{u.sourceSheetName ? ` (aba ${u.sourceSheetName})` : ''}</option>)}
+    </SelectField>
+  );
+}
+
+const STATUS_LABEL: Record<WorkbookUpdateDiffDto['rows'][number]['status'], [string, string]> = { added: ['Nova', 'text-ok'], removed: ['Retirada', 'text-danger'], changed: ['Alterada', 'text-warn'] };
+
+function UpdateReport({ u, canEdit, onUseCurrent }: { u: WorkbookUpdateDiffDto; canEdit: boolean; onUseCurrent: () => void }) {
+  const what = u.kind === 'sheet' ? 'a ficha' : 'o quadro';
+  return (
+    <section aria-label="Diferenças da atualização" className="flex flex-col gap-3 border border-line bg-sheet p-3">
+      <h3 className="font-medium">Atualização d{what} “{u.title}”</h3>
+      <p className="text-[13.5px]">
+        <span className="text-ok">{u.counts.added} nova(s)</span> · <span className="text-warn">{u.counts.changed} alterada(s)</span> · <span className="text-danger">{u.counts.removed} retirada(s)</span> · {u.counts.unchanged} igual(is)
+      </p>
+      {u.stale && <Notice tone="warn"><p>{u.kind === 'sheet' ? 'A ficha foi alterada' : 'O quadro foi alterado'} depois que esta atualização foi planejada. Confira as diferenças abaixo (já contra o estado atual) e confirme.</p>{canEdit && <div className="mt-2"><Button onClick={onUseCurrent}>Atualizar sobre a versão atual</Button></div>}</Notice>}
+      {u.launched && <Notice tone="info">Já lançado em quantitativos: as medições só mudam quando você relançar {what} depois de aplicar.</Notice>}
+      {u.lostLinks > 0 && <Notice tone="warn">{u.lostLinks} linha(s) retirada(s) tinham {u.kind === 'sheet' ? 'destino próprio' : 'serviços'} definidos no sistema; isso se perde com a linha. {u.keptLinks} linha(s) casada(s) mantêm o que tinham.</Notice>}
+      {u.totals.length > 0 && (
+        <table className="text-[13px]">
+          <thead className="text-muted"><tr><th className="pr-4 text-left font-normal">Saída</th><th className="pr-4 text-right font-normal">Atual</th><th className="pr-4 text-right font-normal">Nova versão</th><th className="text-right font-normal">Δ</th></tr></thead>
+          <tbody>{u.totals.map((t) => {
+            const d = Number(t.after) - Number(t.before);
+            return <tr key={t.key}><td className="pr-4">{t.label}</td><td className="pr-4 text-right font-mono">{fmtQty(t.before)} {t.unit}</td><td className="pr-4 text-right font-mono">{fmtQty(t.after)} {t.unit}</td><td className={`text-right font-mono ${d ? (d > 0 ? 'text-ok' : 'text-danger') : 'text-muted'}`}>{d > 0 ? '+' : ''}{fmtQty(String(Math.round(d * 1e6) / 1e6))}</td></tr>;
+          })}</tbody>
+        </table>
+      )}
+      {u.rows.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-[13px]">
+            <thead className="bg-paper text-[12px] text-muted"><tr><th className="px-2 py-1 font-normal">Situação</th><th className="px-2 py-1 font-normal">Linha</th><th className="px-2 py-1 font-normal">Na planilha</th><th className="px-2 py-1 font-normal">O que muda</th></tr></thead>
+            <tbody>{u.rows.map((r, i) => (
+              <tr key={i} className="border-t border-line align-top">
+                <td className={`px-2 py-1 ${STATUS_LABEL[r.status][1]}`}>{STATUS_LABEL[r.status][0]}</td>
+                <td className="px-2 py-1">{r.label}</td>
+                <td className="px-2 py-1 font-mono">{r.row ?? '—'}</td>
+                <td className="px-2 py-1">{r.changes.map((c, k) => <span key={k} className="block">{c.field}: <span className="font-mono text-muted line-through">{c.before || '∅'}</span> → <span className="font-mono">{c.after || '∅'}</span></span>)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      ) : <p className="text-[13px] text-muted">Nenhuma linha muda.</p>}
     </section>
   );
 }

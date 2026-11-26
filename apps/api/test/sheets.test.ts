@@ -24,8 +24,21 @@ describe('modelos de ficha', () => {
 
   it('organização nova recebe os modelos iniciais publicados', async () => {
     const list = (await c.get('/api/sheet-templates').expect(200)).body as SheetTemplateDto[];
-    expect(list.map((t) => t.code)).toEqual(['ACO', 'CER', 'CONC', 'PAREDE', 'REDE', 'TELHADO']);
+    expect(list.map((t) => t.code)).toEqual(['ACO', 'CER', 'CONC', 'MARM', 'PAREDE', 'REDE', 'SUP', 'TELHADO', 'TERRA']);
     expect(list.find((t) => t.code === 'REDE')!.versions[0]).toMatchObject({ number: 1, status: 'PUBLISHED', issues: [] });
+  });
+
+  it('organização que já tinha modelos recebe os novos padrões, sem duplicar e sem mexer nos existentes', async () => {
+    const o = await signup(app, 'Org Modelos Antigos');
+    const orgId = (await prisma.membership.findFirstOrThrow({ where: { user: { email: o.email } } })).organizationId;
+    // organização anterior aos modelos novos: SUP/MARM/TERRA ainda não existiam (códigos tirados do caminho)
+    for (const code of ['SUP', 'MARM', 'TERRA']) await prisma.sheetTemplate.updateMany({ where: { organizationId: orgId, code }, data: { code: `OLD-${code}` } });
+    const cer = await prisma.sheetTemplate.findFirstOrThrow({ where: { organizationId: orgId, code: 'CER' } });
+    await Promise.all([o.get('/api/sheet-templates').expect(200), o.get('/api/sheet-templates').expect(200)]);
+    const after = await prisma.sheetTemplate.findMany({ where: { organizationId: orgId }, orderBy: { code: 'asc' } });
+    expect(after.map((t) => t.code)).toEqual(['ACO', 'CER', 'CONC', 'MARM', 'OLD-MARM', 'OLD-SUP', 'OLD-TERRA', 'PAREDE', 'REDE', 'SUP', 'TELHADO', 'TERRA']);
+    expect(after.find((t) => t.code === 'CER')).toMatchObject({ id: cer.id, updatedAt: cer.updatedAt });
+    expect(await prisma.sheetTemplateVersion.count({ where: { templateId: cer.id } })).toBe(1);
   });
 
   it('rascunho inválido não publica; publicada é imutável no banco; nova versão parte da anterior', async () => {

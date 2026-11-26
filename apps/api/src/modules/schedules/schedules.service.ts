@@ -92,65 +92,78 @@ export class SchedulesService {
   }
 
   /** Grava a grade inteira (destinos e itens) com bloqueio otimista. */
+  /** Conteúdo atual no formato de gravação (para atualizar os itens preservando destinos e serviços). */
+  async currentContent(tx: Tx, organizationId: string, projectId: string, id: string) {
+    const s = await this.schedule(tx, organizationId, projectId, id);
+    return {
+      schedule: s, launched: !!s.launchedHash,
+      columns: [...s.columns].sort((a, b) => a.position - b.position).map((c) => ({ key: c.key, label: c.label, wbsNodeId: c.wbsNodeId, anchor: toAnchorInput(anchorOf(c)) })),
+      rows: [...s.rows].sort((a, b) => a.position - b.position).map(rowDto),
+    };
+  }
+
   async save(actor: Actor, projectId: string, id: string, version: number, input: SaveScheduleInput) {
-    await this.prisma.$transaction(async (tx) => {
-      await assertProjectEditable(tx, actor.organizationId, projectId);
-      const s = await this.schedule(tx, actor.organizationId, projectId, id);
-      if (s.archivedAt) throw conflict('ARCHIVED', 'Quadro arquivado não pode ser alterado. Restaure-o antes.');
-      const dup = (keys: string[], what: string) => { const seen = new Set<string>(); for (const k of keys) { if (seen.has(k)) throw invalid(`${what} repetido: ${k}.`, what === 'Destino' ? 'columns' : 'rows'); seen.add(k); } };
-      dup(input.columns.map((c) => c.key), 'Destino');
-      dup(input.rows.map((r) => r.key), 'Item');
-      const colKeys = new Set(input.columns.map((c) => c.key));
-      // destinos: item da EAP quantificável e âncora válida do empreendimento
-      const wbsIds = [...new Set(input.columns.map((c) => c.wbsNodeId).filter((x): x is string => !!x))];
-      const nodes = new Map((await tx.wbsNode.findMany({ where: { id: { in: wbsIds }, projectId, organizationId: actor.organizationId } })).map((n) => [n.id, n]));
-      for (const w of wbsIds) {
-        const n = nodes.get(w);
-        if (!n) throw notFound('Item da EAP');
-        if (n.archivedAt) throw invalid(`O item da EAP ${n.code} está arquivado.`, 'columns');
-        if (n.nodeType !== 'ITEM') throw invalid(`${n.code} é um agrupador; destinos usam itens quantificáveis da EAP.`, 'columns');
-      }
-      const ctx = input.columns.some((c) => c.anchor) ? await loadContext(tx, projectId) : null;
-      const colAnchors: AnchorFields[] = [];
-      for (const c of input.columns) {
-        const f = c.anchor ? this.measurements.anchorFields(c.anchor) : NO_ANCHOR;
-        if (c.anchor) await this.measurements.checkAnchor(tx, projectId, f, ctx!);
-        colAnchors.push(f);
-      }
-      // itens: unidade e serviços da organização (catálogo ou deste empreendimento)
-      const units = new Map((await loadUnits(tx, actor.organizationId)).map((u) => [u.symbol, u]));
-      const sids = [...new Set(input.rows.flatMap((r) => r.serviceIds))];
-      const svcs = new Map((await tx.service.findMany({ where: { id: { in: sids }, organizationId: actor.organizationId, OR: [{ projectId: null }, { projectId }] }, select: { id: true, archivedAt: true } })).map((x) => [x.id, x]));
-      const before = new Set(s.rows.flatMap((r) => r.services.map((x) => x.serviceId)));
-      for (const sid of sids) {
-        const v = svcs.get(sid);
-        if (!v) throw notFound('Serviço');
-        if (v.archivedAt && !before.has(sid)) throw invalid('Serviço arquivado não pode ser incluído no quadro.', 'rows');
-      }
-      for (const r of input.rows) {
-        if (!units.has(r.unit)) throw invalid(`Unidade não cadastrada: ${r.unit}.`, 'rows');
-        if (new Set(r.serviceIds).size !== r.serviceIds.length) throw invalid(`O item ${r.code ?? r.description} repete o serviço.`, 'rows');
-      }
-      await tx.scheduleColumn.deleteMany({ where: { scheduleId: id } });
-      await tx.scheduleRow.deleteMany({ where: { scheduleId: id } });
-      if (input.columns.length) await tx.scheduleColumn.createMany({ data: input.columns.map((c, i) => ({ organizationId: actor.organizationId, projectId, scheduleId: id, key: c.key, position: i, label: c.label, wbsNodeId: c.wbsNodeId ?? null, ...colAnchors[i]! })) });
-      for (const [i, r] of input.rows.entries()) {
-        const cells = Object.fromEntries(Object.entries(r.cells).map(([k, v]) => [k, v.trim()]).filter(([k, v]) => colKeys.has(k!) && v));
-        await tx.scheduleRow.create({ data: {
-          organizationId: actor.organizationId, projectId, scheduleId: id, key: r.key, position: i, code: r.code ?? null, description: r.description, spec: r.spec ?? null,
-          unitId: units.get(r.unit)!.id, width: r.width || null, height: r.height || null, cells,
-          services: { create: r.serviceIds.map((serviceId, position) => ({ serviceId, position })) },
-        } });
-      }
-      const upd = await tx.schedule.updateMany({ where: { id, version }, data: {
-        version: { increment: 1 }, ...(input.title !== undefined && { title: input.title }), ...(input.sourceReference !== undefined && { sourceReference: input.sourceReference }),
-        ...(input.documentId !== undefined && { documentId: input.documentId }),
+    await this.prisma.$transaction((tx) => this.saveIn(tx, actor, projectId, id, version, input), TX);
+  }
+
+  /** Mesmo caso de uso dentro de uma transação existente (ex.: atualização pela migração de planilha). */
+  async saveIn(tx: Tx, actor: Actor, projectId: string, id: string, version: number, input: SaveScheduleInput, reason?: string) {
+    await assertProjectEditable(tx, actor.organizationId, projectId);
+    const s = await this.schedule(tx, actor.organizationId, projectId, id);
+    if (s.archivedAt) throw conflict('ARCHIVED', 'Quadro arquivado não pode ser alterado. Restaure-o antes.');
+    const dup = (keys: string[], what: string) => { const seen = new Set<string>(); for (const k of keys) { if (seen.has(k)) throw invalid(`${what} repetido: ${k}.`, what === 'Destino' ? 'columns' : 'rows'); seen.add(k); } };
+    dup(input.columns.map((c) => c.key), 'Destino');
+    dup(input.rows.map((r) => r.key), 'Item');
+    const colKeys = new Set(input.columns.map((c) => c.key));
+    // destinos: item da EAP quantificável e âncora válida do empreendimento
+    const wbsIds = [...new Set(input.columns.map((c) => c.wbsNodeId).filter((x): x is string => !!x))];
+    const nodes = new Map((await tx.wbsNode.findMany({ where: { id: { in: wbsIds }, projectId, organizationId: actor.organizationId } })).map((n) => [n.id, n]));
+    for (const w of wbsIds) {
+      const n = nodes.get(w);
+      if (!n) throw notFound('Item da EAP');
+      if (n.archivedAt) throw invalid(`O item da EAP ${n.code} está arquivado.`, 'columns');
+      if (n.nodeType !== 'ITEM') throw invalid(`${n.code} é um agrupador; destinos usam itens quantificáveis da EAP.`, 'columns');
+    }
+    const ctx = input.columns.some((c) => c.anchor) ? await loadContext(tx, projectId) : null;
+    const colAnchors: AnchorFields[] = [];
+    for (const c of input.columns) {
+      const f = c.anchor ? this.measurements.anchorFields(c.anchor) : NO_ANCHOR;
+      if (c.anchor) await this.measurements.checkAnchor(tx, projectId, f, ctx!);
+      colAnchors.push(f);
+    }
+    // itens: unidade e serviços da organização (catálogo ou deste empreendimento)
+    const units = new Map((await loadUnits(tx, actor.organizationId)).map((u) => [u.symbol, u]));
+    const sids = [...new Set(input.rows.flatMap((r) => r.serviceIds))];
+    const svcs = new Map((await tx.service.findMany({ where: { id: { in: sids }, organizationId: actor.organizationId, OR: [{ projectId: null }, { projectId }] }, select: { id: true, archivedAt: true } })).map((x) => [x.id, x]));
+    const before = new Set(s.rows.flatMap((r) => r.services.map((x) => x.serviceId)));
+    for (const sid of sids) {
+      const v = svcs.get(sid);
+      if (!v) throw notFound('Serviço');
+      if (v.archivedAt && !before.has(sid)) throw invalid('Serviço arquivado não pode ser incluído no quadro.', 'rows');
+    }
+    for (const r of input.rows) {
+      if (!units.has(r.unit)) throw invalid(`Unidade não cadastrada: ${r.unit}.`, 'rows');
+      if (new Set(r.serviceIds).size !== r.serviceIds.length) throw invalid(`O item ${r.code ?? r.description} repete o serviço.`, 'rows');
+    }
+    await tx.scheduleColumn.deleteMany({ where: { scheduleId: id } });
+    await tx.scheduleRow.deleteMany({ where: { scheduleId: id } });
+    if (input.columns.length) await tx.scheduleColumn.createMany({ data: input.columns.map((c, i) => ({ organizationId: actor.organizationId, projectId, scheduleId: id, key: c.key, position: i, label: c.label, wbsNodeId: c.wbsNodeId ?? null, ...colAnchors[i]! })) });
+    for (const [i, r] of input.rows.entries()) {
+      const cells = Object.fromEntries(Object.entries(r.cells).map(([k, v]) => [k, v.trim()]).filter(([k, v]) => colKeys.has(k!) && v));
+      await tx.scheduleRow.create({ data: {
+        organizationId: actor.organizationId, projectId, scheduleId: id, key: r.key, position: i, code: r.code ?? null, description: r.description, spec: r.spec ?? null,
+        unitId: units.get(r.unit)!.id, width: r.width || null, height: r.height || null, cells,
+        services: { create: r.serviceIds.map((serviceId, position) => ({ serviceId, position })) },
       } });
-      if (upd.count === 0) throw versionConflict();
-      if (input.documentId) await this.measurements.checkDocument(tx, actor.organizationId, projectId, input.documentId);
-      await this.audit.record(tx, actor, { projectId, entityType: 'Schedule', entityId: id, action: 'UPDATE',
-        before: { title: s.title, columns: s.columns.length, rows: s.rows.length }, after: { title: input.title ?? s.title, columns: input.columns.map((c) => c.label), rows: input.rows.length } });
-    }, TX);
+    }
+    const upd = await tx.schedule.updateMany({ where: { id, version }, data: {
+      version: { increment: 1 }, ...(input.title !== undefined && { title: input.title }), ...(input.sourceReference !== undefined && { sourceReference: input.sourceReference }),
+      ...(input.documentId !== undefined && { documentId: input.documentId }),
+    } });
+    if (upd.count === 0) throw versionConflict();
+    if (input.documentId) await this.measurements.checkDocument(tx, actor.organizationId, projectId, input.documentId);
+    await this.audit.record(tx, actor, { projectId, entityType: 'Schedule', entityId: id, action: 'UPDATE', ...(reason && { reason }),
+      before: { title: s.title, columns: s.columns.length, rows: s.rows.length }, after: { title: input.title ?? s.title, columns: input.columns.map((c) => c.label), rows: input.rows.length } });
   }
 
   async setArchived(actor: Actor, projectId: string, id: string, version: number, archived: boolean, reason?: string) {

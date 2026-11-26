@@ -126,64 +126,67 @@ export class SheetsService {
   }
 
   async update(actor: Actor, projectId: string, id: string, version: number, input: UpdateSheetInput) {
-    await this.prisma.$transaction(async (tx) => {
-      await assertProjectEditable(tx, actor.organizationId, projectId);
-      const s = await this.sheet(tx, actor.organizationId, projectId, id);
-      if (s.archivedAt) throw conflict('ARCHIVED', 'Ficha arquivada não pode ser alterada. Restaure-a antes.');
-      let def = s.templateVersion.definition as unknown as SheetDef;
-      const data: Prisma.SheetUncheckedUpdateManyInput = {};
-      if (input.templateVersionId && input.templateVersionId !== s.templateVersionId) {
-        const v = await this.publishedVersion(tx, actor.organizationId, input.templateVersionId);
-        if (v.templateId !== s.templateVersion.templateId) throw invalid('A nova versão precisa ser do mesmo modelo de ficha.', 'templateVersionId');
-        def = v.definition as unknown as SheetDef;
-        data.templateVersionId = v.id;
-        data.outputMap = await this.suggestedMap(tx, actor.organizationId, projectId, def, (input.outputMap ?? s.outputMap) as Record<string, string | null>);
-        const paramKeys = new Set(def.params.map((p) => p.key));
-        data.params = Object.fromEntries(Object.entries((input.params ?? s.params) as Record<string, string>).filter(([k]) => paramKeys.has(k)));
-        if (!input.rows) Object.assign(data, cleanRows(def, s.rows as UpdateSheetInput['rows'] & object, s.rowAnchors as (AnchorInput | null)[]));
+    await this.prisma.$transaction((tx) => this.updateIn(tx, actor, projectId, id, version, input), TX);
+  }
+
+  /** Mesmo caso de uso dentro de uma transação existente (ex.: atualização pela migração de planilha). */
+  async updateIn(tx: Tx, actor: Actor, projectId: string, id: string, version: number, input: UpdateSheetInput, reason?: string) {
+    await assertProjectEditable(tx, actor.organizationId, projectId);
+    const s = await this.sheet(tx, actor.organizationId, projectId, id);
+    if (s.archivedAt) throw conflict('ARCHIVED', 'Ficha arquivada não pode ser alterada. Restaure-a antes.');
+    let def = s.templateVersion.definition as unknown as SheetDef;
+    const data: Prisma.SheetUncheckedUpdateManyInput = {};
+    if (input.templateVersionId && input.templateVersionId !== s.templateVersionId) {
+      const v = await this.publishedVersion(tx, actor.organizationId, input.templateVersionId);
+      if (v.templateId !== s.templateVersion.templateId) throw invalid('A nova versão precisa ser do mesmo modelo de ficha.', 'templateVersionId');
+      def = v.definition as unknown as SheetDef;
+      data.templateVersionId = v.id;
+      data.outputMap = await this.suggestedMap(tx, actor.organizationId, projectId, def, (input.outputMap ?? s.outputMap) as Record<string, string | null>);
+      const paramKeys = new Set(def.params.map((p) => p.key));
+      data.params = Object.fromEntries(Object.entries((input.params ?? s.params) as Record<string, string>).filter(([k]) => paramKeys.has(k)));
+      if (!input.rows) Object.assign(data, cleanRows(def, s.rows as UpdateSheetInput['rows'] & object, s.rowAnchors as (AnchorInput | null)[]));
+    }
+    if (input.title !== undefined) data.title = input.title;
+    if (input.wbsNodeId !== undefined) {
+      if (input.wbsNodeId) await this.checkWbs(tx, actor.organizationId, projectId, input.wbsNodeId);
+      data.wbsNodeId = input.wbsNodeId;
+    }
+    if (input.anchor !== undefined) {
+      const f = input.anchor ? this.measurements.anchorFields(input.anchor) : NO_ANCHOR;
+      if (input.anchor) await this.measurements.checkAnchor(tx, projectId, f, await loadContext(tx, projectId));
+      Object.assign(data, f);
+    }
+    if (input.params) {
+      const keys = new Set(def.params.map((p) => p.key));
+      for (const k of Object.keys(input.params)) if (!keys.has(k)) throw invalid(`Parâmetro inexistente no modelo: ${k}.`, `params.${k}`);
+      data.params = input.params;
+    }
+    if (input.outputMap) {
+      await this.checkServices(tx, actor.organizationId, projectId, input.outputMap, def);
+      data.outputMap = { ...((data.outputMap ?? s.outputMap) as Record<string, string | null>), ...input.outputMap };
+    }
+    if (input.rows || input.rowAnchors) {
+      const rows = input.rows ?? (s.rows as UpdateSheetInput['rows'] & object);
+      const anchors = input.rowAnchors ?? (input.rows ? [] : (s.rowAnchors as (AnchorInput | null)[]));
+      if (anchors.length > rows.length) throw invalid('Há mais destinos por linha do que linhas.', 'rowAnchors');
+      const unique = new Map(anchors.filter((a): a is AnchorInput => !!a).map((a) => [JSON.stringify(a), a]));
+      if (unique.size) {
+        const ctx = await loadContext(tx, projectId);
+        for (const a of unique.values()) await this.measurements.checkAnchor(tx, projectId, this.measurements.anchorFields(a), ctx);
       }
-      if (input.title !== undefined) data.title = input.title;
-      if (input.wbsNodeId !== undefined) {
-        if (input.wbsNodeId) await this.checkWbs(tx, actor.organizationId, projectId, input.wbsNodeId);
-        data.wbsNodeId = input.wbsNodeId;
-      }
-      if (input.anchor !== undefined) {
-        const f = input.anchor ? this.measurements.anchorFields(input.anchor) : NO_ANCHOR;
-        if (input.anchor) await this.measurements.checkAnchor(tx, projectId, f, await loadContext(tx, projectId));
-        Object.assign(data, f);
-      }
-      if (input.params) {
-        const keys = new Set(def.params.map((p) => p.key));
-        for (const k of Object.keys(input.params)) if (!keys.has(k)) throw invalid(`Parâmetro inexistente no modelo: ${k}.`, `params.${k}`);
-        data.params = input.params;
-      }
-      if (input.outputMap) {
-        await this.checkServices(tx, actor.organizationId, projectId, input.outputMap, def);
-        data.outputMap = { ...((data.outputMap ?? s.outputMap) as Record<string, string | null>), ...input.outputMap };
-      }
-      if (input.rows || input.rowAnchors) {
-        const rows = input.rows ?? (s.rows as UpdateSheetInput['rows'] & object);
-        const anchors = input.rowAnchors ?? (input.rows ? [] : (s.rowAnchors as (AnchorInput | null)[]));
-        if (anchors.length > rows.length) throw invalid('Há mais destinos por linha do que linhas.', 'rowAnchors');
-        const unique = new Map(anchors.filter((a): a is AnchorInput => !!a).map((a) => [JSON.stringify(a), a]));
-        if (unique.size) {
-          const ctx = await loadContext(tx, projectId);
-          for (const a of unique.values()) await this.measurements.checkAnchor(tx, projectId, this.measurements.anchorFields(a), ctx);
-        }
-        Object.assign(data, cleanRows(def, rows, anchors));
-      }
-      if (input.sourceReference !== undefined) data.sourceReference = input.sourceReference;
-      if (input.documentId !== undefined) {
-        if (input.documentId) await this.measurements.checkDocument(tx, actor.organizationId, projectId, input.documentId);
-        data.documentId = input.documentId;
-      }
-      const r = await tx.sheet.updateMany({ where: { id, version }, data: { ...data, version: { increment: 1 } } });
-      if (r.count === 0) throw versionConflict();
-      const summary = (x: { rows?: unknown }) => (Array.isArray(x.rows) ? { rowCount: x.rows.length } : {});
-      const { rows: _r, rowAnchors: ra, ...after } = data;
-      const destCount = Array.isArray(ra) ? { rowDestinations: (ra as unknown[]).filter(Boolean).length } : {};
-      await this.audit.record(tx, actor, { projectId, entityType: 'Sheet', entityId: id, action: 'UPDATE', before: { title: s.title, ...summary(s) }, after: { ...after, ...summary(data), ...destCount } });
-    }, TX);
+      Object.assign(data, cleanRows(def, rows, anchors));
+    }
+    if (input.sourceReference !== undefined) data.sourceReference = input.sourceReference;
+    if (input.documentId !== undefined) {
+      if (input.documentId) await this.measurements.checkDocument(tx, actor.organizationId, projectId, input.documentId);
+      data.documentId = input.documentId;
+    }
+    const r = await tx.sheet.updateMany({ where: { id, version }, data: { ...data, version: { increment: 1 } } });
+    if (r.count === 0) throw versionConflict();
+    const summary = (x: { rows?: unknown }) => (Array.isArray(x.rows) ? { rowCount: x.rows.length } : {});
+    const { rows: _r, rowAnchors: ra, ...after } = data;
+    const destCount = Array.isArray(ra) ? { rowDestinations: (ra as unknown[]).filter(Boolean).length } : {};
+    await this.audit.record(tx, actor, { projectId, entityType: 'Sheet', entityId: id, action: 'UPDATE', ...(reason && { reason }), before: { title: s.title, ...summary(s) }, after: { ...after, ...summary(data), ...destCount } });
   }
 
   async setArchived(actor: Actor, projectId: string, id: string, version: number, archived: boolean, reason?: string) {

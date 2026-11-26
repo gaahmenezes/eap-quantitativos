@@ -24,7 +24,8 @@
 - Tolerância da conferência: 0,001 na unidade da coluna (ou 1 milionésimo do valor).
 - Linhas com "total"/"subtotal" ou fórmula SOMA/SUBTOTAL são ignoradas; títulos de grupo sem quantidade também.
 - Abas com dois blocos lado a lado (ex.: Telhado opção 01/02) são migradas um bloco por vez (limitando as colunas no mapeamento).
-- Avaliar: modelo de ficha para pintura/drywall com descontos por vão, e migração do mesmo arquivo para vários empreendimentos.
+- Avaliar: migração do mesmo arquivo para vários empreendimentos; modelos para abas de matriz (seções de terraplenagem, materiais por coluna das quadras).
+- Atualização pela nova versão (ADR-025): linha com chave renomeada entra como nova + retirada (perde o destino por linha); avaliar casamento assistido.
 
 ## Decisões da F11 a validar com o usuário
 - Lançamento soma por serviço × destino (quadro de resumo); o detalhe por item fica na memória de cálculo.

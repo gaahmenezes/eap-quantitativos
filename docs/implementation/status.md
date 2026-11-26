@@ -82,6 +82,9 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | F12 | Conferência linha a linha contra a planilha (fichas pelo motor; quadros × repetições) | Concluída | `workbook.test.ts` (Cerâmica MAT, drenagem SMR I, hidráulica), E2E F12 |
 | F12 | Assistente por aba (pré-visualização, mapeamento, verificação), aplicação transacional e relatório; nada lançado em quantitativos; isolamento | Concluída | `workbooks.test.ts`, E2E F12 |
 | F12 | Modelo CER: revestimento paginado passa a usar peças × dimensões (divergência revelada pela conferência) | Concluída | `engine.test.ts` |
+| F12+ | Modelos SUP (superfícies), MARM (mármore/granito) e TERRA (movimento de terra), instalados também em organizações existentes | Concluída | `packages/domain/src/migration/templates.test.ts` (linhas reais VMB/Marupi), `apps/api/test/sheets.test.ts` |
+| F12+ | Sugestão por cabeçalhos, bloco certo em abas com dois blocos, fração (0,35 = 35%), linhas-modelo vazias ignoradas | Concluída | `templates.test.ts`; ensaio real: sem erro 22→51 (VMB), 22→56 (Marupi) |
+| F12+ | Atualização de ficha/quadro pela nova versão da planilha: sugestão pela aba de origem, prévia de diferenças, bloqueio otimista, destinos por linha e serviços preservados, relançamento revisa | Concluída | `packages/domain/src/migration/update.test.ts`, `apps/api/test/workbooks-update.test.ts`, E2E F12 (2º cenário) |
 | F13 | Destino por linha nas fichas: uma medição por saída × destino, memória por destino, dupla contagem entre destinos | Concluída | `apps/api/test/sheet-rows.test.ts`, E2E F13 |
 | F13 | Fila de trabalho: tarefas vinculadas, responsável/revisor com edição, prazo, fluxo com revisão, transições auditadas, "Minhas tarefas" | Concluída | `apps/api/test/tasks.test.ts`, E2E F13 |
 | F13 | Centro operacional: pendências com motivos, cobertura da EAP por grupo, vínculos sem medição, fórmulas desatualizadas, alterações desde a última revisão, tarefas e atividade | Concluída | `apps/api/test/operations.test.ts`, E2E F13, revisão visual |
@@ -89,4 +92,4 @@ Legenda: Planejada · Em desenvolvimento · Implementada · Testada · Concluíd
 | Design 2 | Navegação: menu agrupado com ícones e modo recolhido, seletor de empreendimento, barra superior, busca e comandos Ctrl+K, trilha e cabeçalho de página | Concluída | E2E completo; revisão visual (busca, seletor, recolhido, gaveta no celular) |
 
 ## Contagem de testes (última execução)
-- `packages/domain`: 151 · `apps/api` (integração, Postgres real): 181 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 16
+- `packages/domain`: 175 · `apps/api` (integração, Postgres real): 187 · `apps/web` (componentes e modelo da árvore): 8 · E2E Playwright: 17

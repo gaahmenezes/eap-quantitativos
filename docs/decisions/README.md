@@ -28,3 +28,4 @@ Formato: contexto → decisão → consequências. Status: Proposta | Aceita | S
 | [022](022-migracao-de-planilhas.md) | Migração das planilhas: extrato por aba, plano com mapeamento, conferência e criação de fichas e quadros | Aceita |
 | [023](023-centro-operacional.md) | Centro operacional: painel de pendências e cobertura, fila de trabalho com revisão e destino por linha nas fichas | Aceita |
 | [024](024-linguagem-visual.md) | Linguagem visual: tokens, Inter tabular, ícones, menu agrupado e recolhível, seletor de empreendimento e busca Ctrl+K | Aceita |
+| [025](025-modelos-novos-e-atualizacao-pela-planilha.md) | Modelos de ficha SUP/MARM/TERRA, sugestão por cabeçalhos e atualização de fichas e quadros pela nova versão da planilha | Aceita |
