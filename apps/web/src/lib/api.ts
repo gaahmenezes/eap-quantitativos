@@ -83,7 +83,13 @@ async function failure(res: Response): Promise<never> {
 
 /** Envio de arquivo (multipart) com CSRF. */
 export async function uploadFile<T>(path: string, file: File, fields: Record<string, string> = {}): Promise<T> {
-  if (DEMO) throw readOnly();
+  if (DEMO) {
+    // demonstração: a migração de planilhas lê o arquivo aqui no navegador (nada é enviado)
+    const m = /^\/projects\/([^/]+)\/workbook-imports$/.exec(path);
+    if (!m) throw readOnly();
+    const { demoUpload } = await import('./demo-migration');
+    return (await demoGuard(() => demoUpload(m[1]!, file))) as T;
+  }
   const form = new FormData();
   for (const [k, v] of Object.entries(fields)) form.append(k, v);
   form.append('file', file);
@@ -115,8 +121,21 @@ export async function downloadFile(method: 'GET' | 'POST', path: string, body?: 
 const readOnly = () => new ApiError({ type: 'about:blank#DEMO', title: 'Demonstração', status: 403, code: 'DEMO_READ_ONLY', detail: 'Esta é uma demonstração somente leitura: alterações, envios e downloads não são feitos aqui.' });
 
 /** Demonstração: responde com a gravação; o que não foi gravado aparece como indisponível. */
+async function demoGuard<T>(fn: () => T | Promise<T>): Promise<T> {
+  try { return await fn(); } catch (e) {
+    const { DemoProblem } = await import('./demo-migration');
+    if (e instanceof DemoProblem) throw new ApiError({ type: `about:blank#${e.code}`, title: e.title, status: e.status, code: e.code, detail: e.detail, errors: e.errors });
+    throw e;
+  }
+}
+
 async function demoCall<T>(method: Method, path: string, body: unknown): Promise<T> {
   await new Promise((r) => setTimeout(r, 120));
+  if (path.includes('/workbook-imports')) {
+    const { demoMigration } = await import('./demo-migration');
+    const live = await demoGuard(() => demoMigration(method, path, body));
+    if (live) return live.body as T;
+  }
   const rec = demoLookup(method, path, body !== undefined ? JSON.stringify(body) : undefined);
   if (!rec) {
     if (method !== 'GET' && !path.endsWith('/consolidation') && !path.endsWith('/consolidation/lines') && !path.endsWith('/preview')) throw readOnly();

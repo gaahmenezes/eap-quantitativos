@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/button';
 import { ErrorState, Loading, Notice } from '../../components/ui/feedback';
 import { SelectField, TextField } from '../../components/ui/field';
 import { ConfirmDialog } from '../../components/ui/panel';
-import { api, errorMessage } from '../../lib/api';
+import { api, ApiError, errorMessage } from '../../lib/api';
 import { fmtDateTime, fmtQty } from '../../lib/format';
 import { useSession } from '../auth/session';
 import { useProject } from '../projects/api';
@@ -30,6 +30,8 @@ export function WorkbookWizardPage() {
   const project = useProject(projectId);
   const w = useWorkbookImport(projectId, importId);
   const templates = useSheetTemplates();
+  // problemas da última tentativa de aplicar (sobrevivem à recriação do assistente quando o plano é salvo antes)
+  const [applyProblems, setApplyProblems] = useState<{ path: string; message: string }[]>([]);
   if (project.isPending || w.isPending || templates.isPending) return <Loading />;
   if (project.isError) return <ErrorState message={errorMessage(project.error)} />;
   if (w.isError) return <ErrorState message={errorMessage(w.error)} onRetry={() => w.refetch()} />;
@@ -42,12 +44,14 @@ export function WorkbookWizardPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: 'Empreendimentos', to: '/empreendimentos' }, { label: p.name, to: `/empreendimentos/${p.id}` }, { label: 'Migração de planilhas', to: `/empreendimentos/${p.id}/migracao` }, { label: w.data.fileName }]} />
-      <Wizard key={w.data.version} projectId={p.id} w={w.data} tpls={tpls} canEdit={canEdit} />
+      <Wizard key={w.data.version} projectId={p.id} w={w.data} tpls={tpls} canEdit={canEdit} applyProblems={applyProblems} onApplyProblems={setApplyProblems} />
     </>
   );
 }
 
-function Wizard({ projectId, w, tpls, canEdit }: { projectId: string; w: WorkbookImportDto; tpls: Tpl[]; canEdit: boolean }) {
+function Wizard({ projectId, w, tpls, canEdit, applyProblems, onApplyProblems }: {
+  projectId: string; w: WorkbookImportDto; tpls: Tpl[]; canEdit: boolean; applyProblems: { path: string; message: string }[]; onApplyProblems: (p: { path: string; message: string }[]) => void;
+}) {
   const [plans, setPlans] = useState<Plan[]>(() => w.sheets.map((s) => w.plan.find((x) => x.sheetIndex === s.index) ?? { sheetIndex: s.index, target: 'ignore' }));
   const [current, setCurrent] = useState<number>(() => plans.find((x) => x.target !== 'ignore')?.sheetIndex ?? 0);
   const [onlyPlanned, setOnlyPlanned] = useState(false);
@@ -61,7 +65,13 @@ function Wizard({ projectId, w, tpls, canEdit }: { projectId: string; w: Workboo
   const apply = async () => {
     let version = w.version;
     if (dirty) { if (!(await save())) return; version += 1; }
-    await act.run(() => api('POST', `/projects/${projectId}/workbook-imports/${w.id}/apply`, { body: {}, version }));
+    onApplyProblems([]);
+    await act.run(async () => {
+      try { return await api('POST', `/projects/${projectId}/workbook-imports/${w.id}/apply`, { body: {}, version }); } catch (e) {
+        if (e instanceof ApiError && e.code === 'WORKBOOK_PLAN_INVALID') onApplyProblems(e.problem.errors ?? []);
+        throw e;
+      }
+    });
   };
   const planned = plans.filter((x) => x.target !== 'ignore');
   const badge = (i: number) => {
@@ -85,7 +95,18 @@ function Wizard({ projectId, w, tpls, canEdit }: { projectId: string; w: Workboo
       )}>
         {STATUS[w.status]} · {w.sheets.length} abas · {planned.length} com destino · enviada por {w.createdBy} em {fmtDateTime(w.createdAt)}
       </PageHeader>
-      {act.error && <div className="mb-3"><Notice tone="danger">{act.error}</Notice></div>}
+      {act.error && !applyProblems.length && <div className="mb-3"><Notice tone="danger">{act.error}</Notice></div>}
+      {applyProblems.length > 0 && (
+        <div className="mb-3" role="alert">
+          <Notice tone="danger">
+            <p className="font-medium">A migração não foi aplicada: {applyProblems.length} problema(s). Corrija ou marque a aba como “Ignorar”.</p>
+            <ul className="mt-1 list-disc pl-5">{applyProblems.map((e, i) => {
+              const idx = Number(/^sheets\.(\d+)$/.exec(e.path)?.[1] ?? NaN);
+              return <li key={i}>{Number.isFinite(idx) ? <button type="button" className="text-left underline" onClick={() => setCurrent(idx)}>{e.message}</button> : e.message}</li>;
+            })}</ul>
+          </Notice>
+        </div>
+      )}
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <nav aria-label="Abas da planilha" className="self-start border border-line bg-sheet">
           <label className="flex items-center gap-1.5 border-b border-line px-3 py-2 text-[13px]"><input type="checkbox" checked={onlyPlanned} onChange={(e) => setOnlyPlanned(e.target.checked)} /> Só abas com destino</label>
@@ -131,6 +152,7 @@ function Result({ projectId, w }: { projectId: string; w: WorkbookImportDto }) {
     <>
       <PageHeader title={w.fileName}>{STATUS[w.status]}{w.result && ` em ${fmtDateTime(w.result.appliedAt)}`}</PageHeader>
       {w.status === 'CANCELLED' && <Notice tone="info">Migração cancelada: nada foi criado.</Notice>}
+      {w.id.startsWith('local-') && w.status === 'APPLIED' && <div className="mb-3"><Notice tone="info">Demonstração: a planilha passou em todas as validações da aplicação. Nada foi gravado — na aplicação real, as fichas e quadros abaixo seriam criados com a origem de cada célula.</Notice></div>}
       {w.result && (
         <section aria-label="Resultado da migração" className="border border-line bg-sheet">
           <h2 className="px-3 py-2 font-medium">Criado ou atualizado a partir da planilha</h2>
@@ -141,7 +163,7 @@ function Result({ projectId, w }: { projectId: string; w: WorkbookImportDto }) {
                 <td className="px-3 py-1.5">{c.sheetName}</td>
                 <td className="px-3 py-1.5">
                   <span className="mr-1 text-[12px] text-muted">{c.action === 'updated' ? 'Atualizado' : 'Criado'}</span>
-                  <Link className="text-cyan-ink hover:underline" to={`/empreendimentos/${projectId}/${c.kind === 'sheet' ? 'fichas' : 'quadros'}/${c.id}`}>{c.kind === 'sheet' ? 'Ficha' : 'Quadro'}: {c.title}</Link>
+                  {c.id.startsWith('local-') ? <span>{c.kind === 'sheet' ? 'Ficha' : 'Quadro'}: {c.title}</span> : <Link className="text-cyan-ink hover:underline" to={`/empreendimentos/${projectId}/${c.kind === 'sheet' ? 'fichas' : 'quadros'}/${c.id}`}>{c.kind === 'sheet' ? 'Ficha' : 'Quadro'}: {c.title}</Link>}
                   {c.counts && <span className="block text-[12px] text-muted">{c.counts.added} nova(s) · {c.counts.changed} alterada(s) · {c.counts.removed} retirada(s) · {c.counts.unchanged} igual(is)</span>}
                 </td>
                 <td className="px-3 py-1.5 text-right font-mono">{c.rows}</td>

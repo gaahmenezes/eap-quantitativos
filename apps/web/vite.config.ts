@@ -4,6 +4,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // demonstração: um único arquivo JS (inclusive o leitor de XLSX carregado sob demanda), para virar uma página só
+  ...(process.env['VITE_DEMO'] === '1' && { build: { rollupOptions: { output: { inlineDynamicImports: true } } } }),
   server: {
     port: Number(process.env['WEB_PORT'] ?? 5173),
     strictPort: true,

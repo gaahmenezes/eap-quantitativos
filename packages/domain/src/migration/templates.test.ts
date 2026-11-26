@@ -153,6 +153,10 @@ describe('destino e cabeçalho', () => {
     expect(suggestTarget('Pav-BEA')).toEqual({ target: 'sheet', templateCode: 'CER' });
     expect(suggestTarget('Mdo Instalações')).toEqual({ target: 'ignore' });
   });
+  it('quantidade do item: "Quantidade por casa", não "Quantidade casas" (repetições) — VMB › Grama Habitação', () => {
+    expect(suggestColumns(['Tipologia', 'Unidade', 'Quantidade por casa', 'Quantidade casas', 'Quantidade Total'], [{ key: 'qty', label: 'Quantidade' }])).toEqual({ qty: 2 });
+    expect(suggestColumns(['Elemento', 'Quantidade casas', 'Qtde'], [{ key: 'qty', label: 'Quantidade' }])).toEqual({ qty: 2 });
+  });
   it('lista com unidade e quantidade vira quadro, pelo rótulo ou pelo conteúdo', () => {
     expect(suggestTarget('Grama Habitação', ['Tipologia', 'Unidade', 'Quantidade por casa', 'Quantidade casas'])).toEqual({ target: 'schedule', scheduleKind: 'OUTROS' });
     expect(suggestTarget('Equip_áreacomum', ['Ambiente', 'Especificação', 'Quant.'], { unitColumn: true })).toEqual({ target: 'schedule', scheduleKind: 'OUTROS' });

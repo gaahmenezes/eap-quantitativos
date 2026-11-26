@@ -21,3 +21,9 @@ export const demoKey = (method: string, path: string, body?: string) => `${metho
 export function demoLookup(method: string, path: string, body?: string): Recorded | null {
   return snapshot[demoKey(method, path, body)] ?? null;
 }
+
+/** Primeira resposta gravada cuja chave começa com o prefixo (ex.: a aba gravada com outra linha de cabeçalho). */
+export function demoFind(prefix: string): Recorded | null {
+  const k = Object.keys(snapshot).find((x) => x === prefix || x.startsWith(`${prefix}?`) || x.startsWith(`${prefix} `));
+  return k ? snapshot[k]! : null;
+}

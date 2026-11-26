@@ -152,7 +152,7 @@ const SYNONYMS: Record<string, string[]> = {
   profundidade: ['profundidade', 'prof'], material: ['material'], bitola: ['bitola', 'diametro'], tela: ['tela'], pano: ['id', 'pano', 'peca'],
   // quadros
   code: ['id', 'codigo', 'cod'], description: ['descricao', 'elemento', 'item', 'descricao do material'], spec: ['tipo', 'especificacao', 'modelo', 'dimensao'],
-  unit: ['unidade', 'un', 'und', 'unid', 'um'], width: ['largura'], height: ['altura'], qty: ['quantidade', 'qtde', 'qtd', 'qtde casa', 'quantidade unitaria', 'qtde und'],
+  unit: ['unidade', 'un', 'und', 'unid', 'um'], width: ['largura'], height: ['altura'], qty: ['quantidade', 'qtde', 'qtd', 'qtde casa', 'quantidade unitaria', 'qtde und', 'quantidade por casa', 'qtde por casa', 'quantidade por unidade'],
 };
 const score = (label: string, candidates: string[]) => {
   const l = norm(label);
@@ -168,7 +168,11 @@ const score = (label: string, candidates: string[]) => {
 };
 /** Sugere a coluna da planilha para cada campo (cada coluna usada uma vez; pontuação mínima 0,5). */
 /** Rótulos que parecem o campo mas não são (ex.: "Área Parede (sem desconto)" não é o desconto). */
-const NOT_FIELD: Record<string, RegExp> = { desconto: /\b(sem|com) desconto\b/ };
+const NOT_FIELD: Record<string, RegExp> = {
+  desconto: /\b(sem|com) desconto\b/,
+  // "Quantidade casas" / "Nº de casas" é o número de repetições, não a quantidade do item
+  qty: /\b(casas|unidades habitacionais|n de rep)\b/,
+};
 export function suggestColumns(labels: string[], fields: { key: string; label: string }[], minScore = 0.5): Record<string, number> {
   const pairs: { key: string; col: number; s: number }[] = [];
   for (const f of fields) labels.forEach((l, col) => {

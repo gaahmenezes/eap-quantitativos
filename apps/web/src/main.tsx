@@ -62,7 +62,7 @@ function DemoBanner() {
   if (!DEMO || !demoMeta) return null;
   return (
     <div role="note" className="sticky top-0 z-40 bg-signal px-4 py-1.5 text-center text-[13px] font-medium text-graphite-950">
-      Demonstração somente leitura · dados reais criados e gravados pela aplicação em {new Date(demoMeta.recordedAt).toLocaleDateString('pt-BR')} · alterações, envios e downloads ficam desativados
+      Demonstração somente leitura · dados reais criados e gravados pela aplicação em {new Date(demoMeta.recordedAt).toLocaleDateString('pt-BR')} · <strong>Migração de planilhas funciona de verdade</strong>: envie seu .xlsx (lido só no seu navegador, nada é enviado ou gravado) · demais alterações desativadas
     </div>
   );
 }

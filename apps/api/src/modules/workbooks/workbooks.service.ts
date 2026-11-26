@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type { AnchorInput, WorkbookApplyResultDto, WorkbookImportDto, WorkbookImportListItemDto, WorkbookPreviewDto, WorkbookSheetDto, WorkbookSheetPlan, WorkbookUpdatableDto, WorkbookUpdateDiffDto } from '@eapq/contracts';
 import {
-  blockEnd, buildScheduleRows, buildSheetRows, compileSheet, computeSheet, diffRows, scheduleKeyed, sheetKeyed, sheetLabels, detectDimensionPair, detectUnitColumn, FRACTION, hasNumbers, headerCandidates, headerLabels, looksLikeFraction, reconcileSheet, suggestColumns, suggestHeaderRow, suggestTarget,
-  type RowsDiff, type ScheduleItem, type SchedulePlanInput, type SheetDef, type SheetPlan, type SheetRowInput, type XSheet,
+  buildSchedulePlan, buildSheetPlan, compileSheet, computeSheet, diffRows, headerLabels, planProblems, previewOf, scheduleKeyed, sheetKeyed, sheetLabels, suggestHeaderRow, suggestPlan,
+  type buildScheduleRows, type RowsDiff, type ScheduleItem, type SheetDef, type SheetRowInput, type XSheet,
 } from '@eapq/domain';
 import type { Actor } from '../../common/auth/auth-context.js';
 import { AppError, conflict, notFound, versionConflict } from '../../common/errors.js';
@@ -19,8 +19,6 @@ import { extractWorkbook } from './extract.js';
 
 const TX = { timeout: 120_000 } as const;
 const invalid = (detail: string, errors: { path: string; message: string }[] = []) => new AppError(422, 'VALIDATION_FAILED', 'Dados inválidos', detail, errors.length ? errors : [{ path: 'plan', message: detail }]);
-const MAX_SHEET_ROWS = 2000;
-const MAX_SCHEDULE_ROWS = 1500;
 
 type Templates = Map<string, { versionId: string; templateId: string; code: string; def: SheetDef }>;
 type ActivePlan = Exclude<WorkbookSheetPlan, { target: 'ignore' }>;
@@ -49,74 +47,8 @@ export class WorkbooksService {
     return { byCode, byId };
   }
 
-  /** Plano sugerido para uma aba: destino pelo nome e cabeçalhos; colunas pelos rótulos. */
   private suggest(s: XSheet, byCode: Templates, units: OrgUnit[]): WorkbookSheetPlan {
-    const headerRow = suggestHeaderRow(s);
-    const labels = headerLabels(s, headerRow);
-    const t = suggestTarget(s.name, labels, { unitColumn: detectUnitColumn(s, headerRow + 1, units) !== null });
-    if (t.target === 'sheet') {
-      const tpl = byCode.get(t.templateCode);
-      // aba com mais de um bloco: o cabeçalho é o que mais casa com o modelo
-      const options = tpl ? headerCandidates(s).map((h) => this.suggestSheet(s, h, tpl, units)) : [];
-      const best = options.reduce<(typeof options)[number] | null>((b, o) => (!b || o.mapped > b.mapped ? o : b), null);
-      if (best && best.mapped >= 2) return best.plan;
-      // poucas colunas reconhecidas: talvez seja uma lista de materiais
-      const list = this.suggestSchedule(s, headerRow, labels, 'OUTROS', units);
-      return list ?? { sheetIndex: s.index, target: 'ignore' };
-    }
-    if (t.target === 'schedule') return this.suggestSchedule(s, headerRow, labels, t.scheduleKind, units) ?? { sheetIndex: s.index, target: 'ignore' };
-    return { sheetIndex: s.index, target: 'ignore' };
-  }
-
-  private suggestSheet(s: XSheet, headerRow: number, tpl: { versionId: string; templateId: string; code: string; def: SheetDef }, units: OrgUnit[]) {
-    const labels = headerLabels(s, headerRow);
-    const first = headerRow + 1;
-    const map: Record<string, { col: number; unit?: string | null }> = {};
-    // dimensões "L x A": peça da cerâmica (em m na planilha), pano do telhado, peça de mármore
-    const pair = detectDimensionPair(s, first);
-    const pairKeys = tpl.code === 'CER' ? ['peca_l', 'peca_c'] : tpl.code === 'TELHADO' || tpl.code === 'MARM' ? ['comprimento', 'largura'] : null;
-    if (pair && pairKeys) { map[pairKeys[0]!] = { col: pair[0], ...(tpl.code === 'CER' && { unit: 'm' }) }; map[pairKeys[1]!] = { col: pair[1], ...(tpl.code === 'CER' && { unit: 'm' }) }; }
-    const taken = new Set(Object.values(map).map((m) => m.col));
-    const inputs = suggestColumns(labels.map((l, i) => (taken.has(i) ? '' : l)), tpl.def.columns.filter((c) => c.kind === 'input' && !(c.key in map)));
-    for (const [k, col] of Object.entries(inputs)) map[k] = { col };
-    // porcentagem escrita como fração (cabeçalho "(%)" ou "m/m" com valores 0,35 = 35%)
-    for (const c of tpl.def.columns) {
-      const m = map[c.key];
-      if (c.kind === 'input' && c.unit === '%' && m && !m.unit && /%|m\/m/.test(labels[m.col] ?? '') && looksLikeFraction(s, m.col, first)) map[c.key] = { ...m, unit: FRACTION };
-    }
-    const used = new Set(Object.values(map).map((m) => m.col));
-    // conferência só com cabeçalho bem parecido (evita divergências falsas)
-    const calcs = suggestColumns(labels.map((l, i) => (used.has(i) || !hasNumbers(s, i, first) ? '' : l)), tpl.def.columns.filter((c) => c.kind === 'calc'), 0.8);
-    // superfícies sem medidas (perímetro × altura): a área de parede da planilha é a entrada, não a conferência
-    if (tpl.code === 'SUP' && calcs['parede_liq'] !== undefined && (!map['perimetro'] || !hasNumbers(s, map['perimetro'].col, first))) { map['parede_inf'] = { col: calcs['parede_liq'] }; delete calcs['parede_liq']; }
-    // pontuação: colunas numéricas reconhecidas + campos obrigatórios presentes; zero se não sai nenhuma linha
-    const numeric = Object.values(map).filter((m) => hasNumbers(s, m.col, first)).length;
-    const required = tpl.def.columns.filter((c) => c.kind === 'input' && c.required).every((c) => c.key in map) ? 1 : 0;
-    const lastRow = blockEnd(s, headerRow);
-    const rows = numeric ? buildSheetRows(s, { headerRow, firstRow: first, lastRow, map }, tpl.def, units).rows.length : 0;
-    const mapped = rows ? numeric + required : 0;
-    const plan: WorkbookSheetPlan = {
-      sheetIndex: s.index, headerRow, firstRow: first, lastRow, title: s.name, target: 'sheet', templateVersionId: tpl.versionId, map,
-      checks: Object.fromEntries(Object.entries(calcs).map(([k, col]) => [k, { col }])), params: {},
-    };
-    return { plan, mapped };
-  }
-
-  private suggestSchedule(s: XSheet, headerRow: number, labels: string[], scheduleKind: Extract<WorkbookSheetPlan, { target: 'schedule' }>['scheduleKind'], units: OrgUnit[]): WorkbookSheetPlan | null {
-    const m = suggestColumns(labels, [{ key: 'code', label: 'Id' }, { key: 'description', label: 'Descrição' }, { key: 'spec', label: 'Especificação' }, { key: 'unit', label: 'Unidade' }, { key: 'width', label: 'Largura' }, { key: 'height', label: 'Altura' }]);
-    const pair = detectDimensionPair(s, headerRow + 1);
-    if (pair && m['width'] === undefined && m['height'] === undefined) { m['width'] = pair[0]; m['height'] = pair[1]; }
-    if (m['unit'] === undefined) { const u = detectUnitColumn(s, headerRow + 1, units, new Set(Object.values(m))); if (u !== null) m['unit'] = u; }
-    // sem coluna "Descrição": a primeira coluna de texto (ex.: "Tipologia", "Elemento")
-    if (m['description'] === undefined) {
-      const used0 = new Set(Object.values(m));
-      const first = labels.findIndex((l, i) => !!l && !used0.has(i) && s.rows.slice(headerRow + 1, headerRow + 30).some((r) => r[i] && !r[i]!.num && r[i]!.v.trim()));
-      if (first >= 0) m['description'] = first;
-    }
-    const used = new Set(Object.values(m));
-    const q = suggestColumns(labels.map((l, i) => (used.has(i) || !hasNumbers(s, i, headerRow + 1) ? '' : l)), [{ key: 'qty', label: 'Quantidade' }]);
-    if (m['description'] === undefined || q['qty'] === undefined) return null;
-    return { sheetIndex: s.index, headerRow, firstRow: headerRow + 1, lastRow: null, title: s.name, target: 'schedule', scheduleKind, map: m as { description: number }, dimUnit: 'm', defaultUnit: 'un', quantities: [{ col: q['qty'], label: 'Unidade' }], check: null };
+    return suggestPlan(s, byCode, units) as WorkbookSheetPlan;
   }
 
   async create(actor: Actor, projectId: string, file: UploadedFile | undefined): Promise<WorkbookImportDto> {
@@ -228,17 +160,10 @@ export class WorkbooksService {
   /** Monta e confere uma aba conforme o plano, sem gravar nada (e, se atualiza algo, compara com o atual). */
   private async build(tx: Tx, organizationId: string, projectId: string, id: string, plan: ActivePlan, units: OrgUnit[], byId: Templates) {
     const s = await this.extract(tx, organizationId, id, plan.sheetIndex);
-    const problems: string[] = [];
-    if (plan.firstRow <= plan.headerRow) problems.push('A primeira linha de dados deve vir depois do cabeçalho.');
     if (plan.target === 'sheet') {
       const tpl = byId.get(plan.templateVersionId);
       if (!tpl) throw notFound('Versão publicada do modelo de ficha');
-      const issues = compileSheet(tpl.def, units).issues;
-      if (issues.length) problems.push(...issues.map((i) => i.message));
-      const sp: SheetPlan = { headerRow: plan.headerRow, firstRow: plan.firstRow, lastRow: plan.lastRow ?? null, map: plan.map, checks: plan.checks };
-      for (const k of Object.keys(plan.map)) if (!tpl.def.columns.some((c) => c.key === k && c.kind === 'input')) problems.push(`Coluna de entrada inexistente no modelo: ${k}.`);
-      for (const k of Object.keys(plan.checks)) if (!tpl.def.columns.some((c) => c.key === k && c.kind === 'calc')) problems.push(`Coluna calculada inexistente no modelo: ${k}.`);
-      for (const r of [...Object.values(plan.map), ...Object.values(plan.checks)]) if (r.unit && r.unit !== FRACTION && !units.some((u) => u.symbol === r.unit)) problems.push(`Unidade não cadastrada: ${r.unit}.`);
+      const problems = planProblems(plan, units, tpl);
       if (problems.length) return { kind: 'sheet' as const, sheet: s, problems, built: null, rec: null, tpl, target: null, diff: null, params: plan.params };
       // atualização: a ficha atual (mesmo modelo) e seus parâmetros, que valem também para a nova versão
       const target = plan.updateOf ? await tx.sheet.findFirst({ where: { id: plan.updateOf.id, projectId, organizationId }, include: { templateVersion: { select: { templateId: true, definition: true } } } }) : null;
@@ -250,15 +175,13 @@ export class WorkbooksService {
       }
       const params = { ...((target?.params as Record<string, string> | undefined) ?? {}), ...plan.params };
       if (plan.updateOf && (!target || target.archivedAt || target.templateVersion.templateId !== tpl.templateId)) return { kind: 'sheet' as const, sheet: s, problems, built: null, rec: null, tpl, target: null, diff: null, params };
-      const built = buildSheetRows(s, sp, tpl.def, units);
-      const rec = reconcileSheet(s, sp, built, tpl.def, units, params);
-      if (!built.rows.length) problems.push('Nenhuma linha de dados encontrada com o mapeamento escolhido.');
-      if (built.rows.length > MAX_SHEET_ROWS) problems.push(`A aba gera mais de ${MAX_SHEET_ROWS} linhas.`);
+      const sb = buildSheetPlan(s, plan, tpl, units, params);
+      const built = sb.built!; const rec = sb.rec!;
+      problems.push(...sb.problems);
       const diff = target ? diffRows(sheetKeyed(tpl.def, target.rows as SheetRowInput[]), sheetKeyed(tpl.def, built.rows), sheetLabels(tpl.def)) : null;
       return { kind: 'sheet' as const, sheet: s, problems, built, rec, tpl, target, diff, params };
     }
-    if (!units.some((u) => u.symbol === plan.defaultUnit)) problems.push(`Unidade não cadastrada: ${plan.defaultUnit}.`);
-    if (plan.dimUnit && !units.some((u) => u.symbol === plan.dimUnit)) problems.push(`Unidade não cadastrada: ${plan.dimUnit}.`);
+    const problems = planProblems(plan, units);
     if (problems.length) return { kind: 'schedule' as const, sheet: s, problems, built: null, rec: null, tpl: null, current: null, items: null, diff: null };
     let current: Awaited<ReturnType<SchedulesService['currentContent']>> | null = null;
     if (plan.updateOf) {
@@ -268,11 +191,10 @@ export class WorkbooksService {
       else if (current.columns.length !== plan.quantities.length) problems.push(`O quadro "${current.schedule.title}" tem ${current.columns.length} destino(s); escolha ${current.columns.length} coluna(s) de quantidade, na mesma ordem.`);
       else if (current.schedule.version !== plan.updateOf.version) problems.push(`O quadro "${current.schedule.title}" foi alterado depois que a atualização foi planejada; confira as diferenças e confirme de novo.`);
     }
-    const sp: SchedulePlanInput = { headerRow: plan.headerRow, firstRow: plan.firstRow, lastRow: plan.lastRow ?? null, map: plan.map, dimUnit: plan.dimUnit ?? 'm', defaultUnit: plan.defaultUnit, quantities: plan.quantities, check: plan.check ?? null };
     if (plan.updateOf && (!current || current.schedule.archivedAt)) return { kind: 'schedule' as const, sheet: s, problems, built: null, rec: null, tpl: null, current: null, items: null, diff: null };
-    const built = buildScheduleRows(s, sp, units);
-    if (!built.rows.length) problems.push('Nenhum item encontrado com o mapeamento escolhido.');
-    if (built.rows.length > MAX_SCHEDULE_ROWS) problems.push(`A aba gera mais de ${MAX_SCHEDULE_ROWS} itens.`);
+    const qb = buildSchedulePlan(s, plan, units);
+    const built = qb.built!;
+    problems.push(...qb.problems);
     // células da aba (d1, d2…) nas colunas do quadro atual, pela ordem
     const colKeys = current && current.columns.length === plan.quantities.length ? current.columns.map((c) => c.key) : plan.quantities.map((_, i) => `d${i + 1}`);
     const items: ScheduleItem[] = built.rows.map((r) => ({ code: r.code, description: r.description, spec: r.spec, unit: r.unit, width: r.width, height: r.height, cells: Object.fromEntries(Object.entries(r.cells).map(([k, v]) => [colKeys[Number(k.slice(1)) - 1]!, v])) }));
@@ -311,20 +233,8 @@ export class WorkbooksService {
   }
 
   private report(plan: ActivePlan, b: Awaited<ReturnType<WorkbooksService['build']>>, units: OrgUnit[]): WorkbookPreviewDto {
-    const base = { sheetIndex: plan.sheetIndex, target: plan.target, problems: b.problems, update: this.updateReport(b, units) };
-    if (b.kind === 'sheet') {
-      return {
-        ...base, rowCount: b.built?.rows.length ?? 0,
-        sample: (b.built?.rows ?? []).slice(0, 50).map((r, i) => ({ row: b.built!.sourceRows[i]!, cells: Object.fromEntries(Object.entries(r).map(([k, c]) => [k, c?.v ?? ''])) })),
-        skipped: b.built?.skipped ?? [], rowErrors: b.rec?.rowErrors ?? [], checks: b.rec?.checks ?? [], totals: b.rec?.totals ?? [],
-      };
-    }
-    const sb = b.built as ReturnType<typeof buildScheduleRows> | null;
-    return {
-      ...base, rowCount: sb?.rows.length ?? 0,
-      sample: (sb?.rows ?? []).slice(0, 50).map((r) => ({ row: r.sourceRow, cells: { code: r.code ?? '', description: r.description, spec: r.spec ?? '', unit: r.unit, width: r.width ?? '', height: r.height ?? '', ...r.cells } })),
-      skipped: sb?.skipped ?? [], rowErrors: [], checks: sb?.check ? [sb.check] : [], totals: [],
-    };
+    const base = b.kind === 'sheet' ? previewOf(plan, { kind: 'sheet', problems: [], built: b.built, rec: b.rec }, b.problems) : previewOf(plan, { kind: 'schedule', problems: [], built: b.built as ReturnType<typeof buildScheduleRows> | null }, b.problems);
+    return { ...base, update: this.updateReport(b, units) } as WorkbookPreviewDto;
   }
 
   async preview(organizationId: string, projectId: string, id: string, plan: WorkbookSheetPlan): Promise<WorkbookPreviewDto> {
